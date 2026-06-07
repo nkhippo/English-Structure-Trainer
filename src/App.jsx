@@ -11,25 +11,24 @@ const C = { page: '#FAF9F6', card: '#FFFFFF', line: '#EAE8E1', t1: '#1C1B19', t2
 export default function App() {
   const [apiKey, setApiKey] = useState(getStoredApiKey);
   const [step, setStep] = useState(3);
-  // exercises: uses static seed by default; replaced by AI-generated on demand
-  const [exercises, setExercises] = useState(STEPS[3].exercises);
-  const [attempts, setAttempts] = useState({});       // { idx: string }
-  const [evaluations, setEvaluations] = useState({}); // { idx: Evaluation }
+  const [exercisesByStep, setExercisesByStep] = useState({}); // { step: Exercise[] }
+  const [attemptsByStep, setAttemptsByStep] = useState({});   // { step: { idx: string } }
+  const [evaluationsByStep, setEvaluationsByStep] = useState({}); // { step: { idx: Evaluation } }
+  const [revealedByStep, setRevealedByStep] = useState({});   // { step: boolean }
   const [marks, setMarks] = useState({});              // { `${step}-${idx}`: 'got' | 'review' }
-  const [revealed, setRevealed] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
   const [error, setError] = useState('');
 
   const sd = STEPS[step];
+  const exercises = exercisesByStep[step] || [];
+  const attempts = attemptsByStep[step] || {};
+  const evaluations = evaluationsByStep[step] || {};
+  const revealed = revealedByStep[step] || false;
 
   // ── Step switch ─────────────────────────────────────────────────────────────
   const switchStep = (s) => {
     setStep(s);
-    setExercises(STEPS[s].exercises);
-    setAttempts({});
-    setEvaluations({});
-    setRevealed(false);
     setError('');
   };
 
@@ -39,10 +38,10 @@ export default function App() {
     setError('');
     try {
       const generated = await generateExercises(apiKey, sd, 5);
-      setExercises(generated);
-      setAttempts({});
-      setEvaluations({});
-      setRevealed(false);
+      setExercisesByStep((prev) => ({ ...prev, [step]: generated }));
+      setAttemptsByStep((prev) => ({ ...prev, [step]: {} }));
+      setEvaluationsByStep((prev) => ({ ...prev, [step]: {} }));
+      setRevealedByStep((prev) => ({ ...prev, [step]: false }));
     } catch (e) {
       setError(`問題生成エラー: ${e.message}`);
     } finally {
@@ -63,8 +62,8 @@ export default function App() {
       const results = await checkAnswers(apiKey, pairs);
       const evalMap = {};
       results.forEach((r, i) => { evalMap[i] = r; });
-      setEvaluations(evalMap);
-      setRevealed(true);
+      setEvaluationsByStep((prev) => ({ ...prev, [step]: evalMap }));
+      setRevealedByStep((prev) => ({ ...prev, [step]: true }));
     } catch (e) {
       setError(`採点エラー: ${e.message}`);
     } finally {
@@ -74,9 +73,9 @@ export default function App() {
 
   // ── Reset ────────────────────────────────────────────────────────────────────
   const handleReset = () => {
-    setAttempts({});
-    setEvaluations({});
-    setRevealed(false);
+    setAttemptsByStep((prev) => ({ ...prev, [step]: {} }));
+    setEvaluationsByStep((prev) => ({ ...prev, [step]: {} }));
+    setRevealedByStep((prev) => ({ ...prev, [step]: false }));
     setError('');
   };
 
@@ -148,13 +147,13 @@ export default function App() {
             evaluation={evaluations[i] || null}
             mark={marks[`${step}-${i}`] || null}
             revealed={revealed}
-            onAttemptChange={(v) => setAttempts((a) => ({ ...a, [i]: v }))}
+            onAttemptChange={(v) => setAttemptsByStep((a) => ({ ...a, [step]: { ...a[step], [i]: v } }))}
             onMark={(v) => setMarks((m) => ({ ...m, [`${step}-${i}`]: v }))}
           />
         ))}
 
         {/* Bulk action */}
-        {!revealed ? (
+        {exercises.length > 0 && !revealed ? (
           <button onClick={handleCheck} disabled={isChecking} style={{
             width: '100%', padding: 15, borderRadius: 14, border: 'none',
             cursor: isChecking ? 'not-allowed' : 'pointer',
@@ -162,7 +161,7 @@ export default function App() {
             opacity: isChecking ? 0.7 : 1, fontFamily: 'inherit', marginTop: 4 }}>
             {isChecking ? 'Claude が採点中…' : `まとめて答え合わせ（${exercises.length}問）`}
           </button>
-        ) : (
+        ) : exercises.length > 0 ? (
           <div>
             {/* Score summary */}
             {(gotCount + reviewCount) > 0 && (
@@ -180,7 +179,7 @@ export default function App() {
               やり直す
             </button>
           </div>
-        )}
+        ) : null}
 
       </div>
     </div>

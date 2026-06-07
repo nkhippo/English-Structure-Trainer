@@ -1,8 +1,5 @@
 // Step definitions and seed exercises.
-// These serve as:
-//   1. Fallback when Claude API is unavailable
-//   2. Reference examples for the AI generation prompt
-//   3. Default first load content
+// These serve as reference examples for the AI generation prompt.
 
 /**
  * @typedef {Object} Exercise

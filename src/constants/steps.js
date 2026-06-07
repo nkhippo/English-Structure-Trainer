@@ -129,6 +129,53 @@ export const STEPS = {
           { t: 'music', r: 'X', n: '目的語' },
         ],
       },
+      {
+        jp: '彼女は疲れているように見えた。',
+        en: 'She looked tired.',
+        parts: [
+          { t: 'She', r: 'X', n: '主語' },
+          { t: 'looked', r: 'V', n: '知覚動詞（過去形）' },
+          { t: 'tired', r: 'Y', n: '補語（過去分詞の形容詞用法・Y/Word）' },
+        ],
+      },
+      {
+        jp: 'その問題はとても難しい。',
+        en: 'The problem is very difficult.',
+        parts: [
+          { t: 'The problem', r: 'X', n: '主語' },
+          { t: 'is', r: 'V', n: '' },
+          { t: 'very difficult', r: 'Y', n: '補語（形容詞句：副詞+形容詞）' },
+        ],
+      },
+      {
+        jp: '首都の東京は大きな都市だ。',
+        en: 'Tokyo, the capital, is a large city.',
+        parts: [
+          { t: 'Tokyo,', r: 'X', n: '主語' },
+          { t: 'the capital,', r: 'Y', n: '同格（Tokyo の内容を特定）' },
+          { t: 'is', r: 'V', n: '' },
+          { t: 'a large city', r: 'X', n: '補語' },
+        ],
+      },
+      {
+        jp: '彼女はとてもゆっくりと歩いた。',
+        en: 'She walked very slowly.',
+        parts: [
+          { t: 'She', r: 'X', n: '主語' },
+          { t: 'walked', r: 'V', n: '過去形' },
+          { t: 'very slowly', r: 'Z', n: '副詞句（副詞+副詞：様態）' },
+        ],
+      },
+      {
+        jp: '彼は毎朝6時に起きる。',
+        en: 'He gets up at 6 every morning.',
+        parts: [
+          { t: 'He', r: 'X', n: '主語' },
+          { t: 'gets up', r: 'V', n: '現在形（句動詞）' },
+          { t: 'at 6', r: 'Z', n: '時の前置詞句' },
+          { t: 'every morning', r: 'Z', n: '時の副詞（名詞句の副詞用法）' },
+        ],
+      },
     ],
   },
   5: {
@@ -196,6 +243,24 @@ export const STEPS = {
           { t: 'she should read', r: 'Y', n: '関係詞節（that 省略・books を後置修飾）' },
         ],
       },
+      {
+        jp: '彼が嘘をついたという事実は変えられない。',
+        en: 'The fact that he lied cannot be changed.',
+        parts: [
+          { t: 'The fact', r: 'X', n: '主語（名詞）' },
+          { t: 'that he lied', r: 'Y', n: '同格節（fact の内容を説明・Y/Clause）' },
+          { t: 'cannot be changed', r: 'V', n: '助動詞+受動態' },
+        ],
+      },
+      {
+        jp: '私は次に何をすべきかわからない。',
+        en: "I don't know what to do next.",
+        parts: [
+          { t: 'I', r: 'X', n: '主語' },
+          { t: "don't know", r: 'V', n: '否定形' },
+          { t: 'what to do next', r: 'X', n: '名詞句（疑問詞+不定詞・目的語）' },
+        ],
+      },
     ],
   },
   6: {
@@ -253,6 +318,45 @@ export const STEPS = {
           { t: 'listening to music', r: 'Z', n: '分詞構文（副詞役・同時進行）' },
           { t: 'and passed', r: 'V', n: '等位接続（and）で動詞を並列' },
           { t: 'the exam', r: 'X', n: '目的語' },
+        ],
+      },
+      {
+        jp: 'それが本当かどうか私にはわからない。',
+        en: "I don't know whether it is true.",
+        parts: [
+          { t: 'I', r: 'X', n: '主語' },
+          { t: "don't know", r: 'V', n: '否定形' },
+          { t: 'whether it is true', r: 'X', n: '名詞節（whether節・目的語）' },
+        ],
+      },
+      {
+        jp: '試験に合格できるように、彼女は一生懸命勉強した。',
+        en: 'She studied hard so that she could pass the exam.',
+        parts: [
+          { t: 'She', r: 'X', n: '主語' },
+          { t: 'studied', r: 'V', n: '過去形' },
+          { t: 'hard', r: 'Z', n: '様態の副詞' },
+          { t: 'so that she could pass the exam', r: 'Z', n: '副詞節（目的：so that）' },
+        ],
+      },
+      {
+        jp: '彼はとても疲れていたので、すぐに眠ってしまった。',
+        en: 'He was so tired that he fell asleep immediately.',
+        parts: [
+          { t: 'He', r: 'X', n: '主語' },
+          { t: 'was', r: 'V', n: '過去形' },
+          { t: 'so tired', r: 'Y', n: '補語（形容詞句）' },
+          { t: 'that he fell asleep immediately', r: 'Z', n: '副詞節（結果：so…that）' },
+        ],
+      },
+      {
+        jp: '彼は私より速く走る。',
+        en: 'He runs faster than I do.',
+        parts: [
+          { t: 'He', r: 'X', n: '主語' },
+          { t: 'runs', r: 'V', n: '現在形（三単現）' },
+          { t: 'faster', r: 'Z', n: '比較級の副詞' },
+          { t: 'than I do', r: 'Z', n: '副詞節（比較：than）' },
         ],
       },
     ],

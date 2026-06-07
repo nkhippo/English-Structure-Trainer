@@ -55,6 +55,14 @@ export default function QuestionCard({ index, exercise, attempt, evaluation, mar
             </div>
           )}
 
+          {/* Model answer */}
+          {evaluation?.correction && (
+            <div style={{ marginBottom: 12 }}>
+              <p style={{ fontSize: 10.5, fontWeight: 700, color: C.t3, margin: '0 0 5px', letterSpacing: '.05em' }}>模範解答</p>
+              <div style={{ background: C.page, borderRadius: 10, padding: '8px 12px', fontSize: 15, color: C.t2, lineHeight: 1.5 }}>{evaluation.correction}</div>
+            </div>
+          )}
+
           {/* AI evaluation */}
           {evaluation && (
             <div style={{ marginBottom: 14, padding: '10px 14px', borderRadius: 10,
@@ -64,9 +72,6 @@ export default function QuestionCard({ index, exercise, attempt, evaluation, mar
                 {evaluation.correct ? '✓ 正解' : '✗ 要修正'}
               </p>
               <p style={{ fontSize: 13, margin: '0', color: C.t1, lineHeight: 1.5 }}>{evaluation.feedback}</p>
-              {evaluation.correction && (
-                <p style={{ fontSize: 13, margin: '8px 0 0', color: C.t1, fontWeight: 600 }}>正解: {evaluation.correction}</p>
-              )}
             </div>
           )}
 

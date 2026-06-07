@@ -14,7 +14,16 @@
  *   - r must be one of: X (noun role), V (verb), Y (adjective role), Z (adverb role)
  *   - n is a brief Japanese note about the role
  */
+function formatSeedExamples(exercises) {
+  return (exercises || [])
+    .slice(0, 2)
+    .map((ex, i) => `[例${i + 1}]\n  日本語: ${ex.jp}\n  英語: ${ex.en}`)
+    .join('\n\n');
+}
+
 export function buildGeneratePrompt(stepInfo, n) {
+  const seedExamples = formatSeedExamples(stepInfo.exercises);
+
   return {
     system: `あなたは英語教育の専門家です。
 日本語→英語の翻訳練習問題を生成してください。
@@ -23,6 +32,14 @@ export function buildGeneratePrompt(stepInfo, n) {
     user: `以下の文法ポイントに合った翻訳練習問題を${n}問生成してください。
 
 文法ポイント: ${stepInfo.sub}（${stepInfo.focus}）
+
+参考例（日本語の自然さ・文体の基準）:
+${seedExamples || '  （参考例なし）'}
+
+生成手順（必ずこの順番で）:
+1. まず日本語文 jp を、母語話者が違和感なく言える自然な文として書く
+2. jp の意味を正確に英訳して en と parts を作る
+3. 英文の構文要件（後置修飾など）を満たすために、jp を英語語順に無理やり合わせない
 
 返却形式（JSONのみ）:
 [
@@ -41,11 +58,19 @@ export function buildGeneratePrompt(stepInfo, n) {
 - Y: 形容詞役（名詞を修飾するもの：形容詞・前置詞句・分詞・関係詞節）
 - Z: 副詞役（動詞・文全体を修飾するもの：副詞・前置詞句・副詞節・分詞構文）
 
+日本語（jp）の品質要件:
+- 和文として自然で、英語の直訳調（カクル調）にしない
+- 意味が通り、語彙と述語の組み合わせが論理的であること（例: ×「去年出版された著者」→ 著者は出版されない。本が出版される）
+- 英語の後置修飾に合わせてカンマで区切るなど、英語語順をそのまま写さない
+- 関係詞・後置修飾の Step では jp は連体修飾（名詞の前に修飾句）を使う
+  例: ○「去年出版された本はとても興味深い。」 ×「この本は、去年出版された著者による、とても興味深いです。」
+- 生成後、jp だけを読んで不自然さ・意味の矛盾がないか自己確認する
+
 制約:
 - parts[].t をスペースで繋いだ文字列が en と一致すること
 - 各 n は「主語」「現在進行形」「前置詞句（book を後置修飾）」のように簡潔な日本語で
 - 難易度は日常的な文を使い、学習者が理解できるレベルに保つこと
-- 日本語の訳し方が1通りでない場合、模範解答のニュアンスが日本語に一致するよう jp 側の日本語を模範解答に寄せて調整すること`,
+- 日本語の訳し方が1通りでない場合、模範解答のニュアンスが日本語に一致するよう jp を調整する。ただし不自然な日本語になる場合は en の方を jp に合わせて書き換える`,
   };
 }
 

@@ -70,7 +70,7 @@ async function callClaude(apiKey, system, userMessage) {
  * Generate new exercises for the given step.
  *
  * @param {string} apiKey
- * @param {{ sub: string, focus: string }} stepInfo
+ * @param {{ sub: string, focus: string, exercises?: { jp: string, en: string }[] }} stepInfo
  * @param {number} n  Number of exercises to generate (default 5)
  * @returns {Promise<Exercise[]>}
  */

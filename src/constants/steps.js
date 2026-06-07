@@ -7,6 +7,7 @@
  * @property {string} en
  * @property {{ t: string, r: 'X'|'V'|'Y'|'Z', n: string }[]} parts
  * @property {string} [nuance]  // 日本語訳のニュアンス補足（任意）
+ * @property {{ jp: string, en: string }[]} [vocabHints]  // 単語ヒント（任意）
  */
 
 export const STEPS = {
@@ -42,6 +43,7 @@ export const STEPS = {
           { t: 'The report', r: 'X', n: '主語' },
           { t: 'has already been written', r: 'V', n: '現在完了受動態（already は中置）' },
         ],
+        vocabHints: [{ jp: '報告書', en: 'report' }],
       },
       {
         jp: '彼女は3か国語を話せる。',
@@ -156,6 +158,7 @@ export const STEPS = {
           { t: 'is', r: 'V', n: '' },
           { t: 'a large city', r: 'X', n: '補語' },
         ],
+        vocabHints: [{ jp: '首都', en: 'capital' }],
       },
       {
         jp: '彼女はとてもゆっくりと歩いた。',
@@ -202,6 +205,7 @@ export const STEPS = {
           { t: 'a man', r: 'X', n: '補語' },
           { t: 'who speaks English fluently', r: 'Y', n: '関係詞節（man を後置修飾）' },
         ],
+        vocabHints: [{ jp: '流暢に', en: 'fluent' }],
       },
       {
         jp: 'これが私が住んでいる街だ。',
@@ -231,6 +235,10 @@ export const STEPS = {
           { t: 'is', r: 'V', n: '' },
           { t: 'my boss', r: 'X', n: '補語' },
         ],
+        vocabHints: [
+          { jp: '紹介する', en: 'introduce' },
+          { jp: '上司', en: 'boss' },
+        ],
       },
       {
         jp: '彼女には読むべき（仕事上推奨される）本がたくさんある。',
@@ -250,6 +258,10 @@ export const STEPS = {
           { t: 'The fact', r: 'X', n: '主語（名詞）' },
           { t: 'that he lied', r: 'Y', n: '同格節（fact の内容を説明・Y/Clause）' },
           { t: 'cannot be changed', r: 'V', n: '助動詞+受動態' },
+        ],
+        vocabHints: [
+          { jp: '事実', en: 'fact' },
+          { jp: '嘘をつく', en: 'lie' },
         ],
       },
       {
@@ -297,6 +309,7 @@ export const STEPS = {
           { t: 'know', r: 'V', n: '' },
           { t: 'that he is honest', r: 'X', n: '名詞節（目的語）' },
         ],
+        vocabHints: [{ jp: '正直', en: 'honest' }],
       },
       {
         jp: '私と一緒に働く人々は、問題が起きたとき一生懸命努力する。',
@@ -307,6 +320,10 @@ export const STEPS = {
           { t: 'work', r: 'V', n: '現在形' },
           { t: 'hard', r: 'Z', n: '様態の副詞' },
           { t: 'when an issue arises', r: 'Z', n: '副詞節（内部にも X+V がネスト）' },
+        ],
+        vocabHints: [
+          { jp: '問題', en: 'issue' },
+          { jp: '起きる', en: 'arise' },
         ],
       },
       {

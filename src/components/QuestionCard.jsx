@@ -1,11 +1,12 @@
 import { ROLES } from '../constants/roles.js';
+import VocabHints from './VocabHints.jsx';
 
 const C = { card: '#FFFFFF', page: '#FAF9F6', line: '#EAE8E1', t1: '#1C1B19', t2: '#6B6862', t3: '#9A968D' };
 
 /**
  * @param {{
  *   index: number,
- *   exercise: { jp: string, en: string, parts: object[], nuance?: string },
+ *   exercise: { jp: string, en: string, parts: object[], nuance?: string, vocabHints?: { jp: string, en: string }[] },
  *   attempt: string,
  *   evaluation: { correct: boolean, feedback: string, correction: string|null } | null,
  *   mark: 'got' | 'review' | null,
@@ -31,6 +32,8 @@ export default function QuestionCard({ index, exercise, attempt, evaluation, mar
           </span>
         )}
       </div>
+
+      <VocabHints hints={exercise.vocabHints} />
 
       {/* Textarea (hidden after answer check) */}
       {!revealed && (

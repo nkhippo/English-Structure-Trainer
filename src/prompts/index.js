@@ -7,7 +7,7 @@
  * Claude returns a JSON array of Exercise objects.
  *
  * Exercise shape:
- *   { jp: string, en: string, parts: { t: string, r: "X"|"V"|"Y"|"Z", n: string }[], nuance?: string }
+ *   { jp: string, en: string, parts: { t: string, r: "X"|"V"|"Y"|"Z", n: string }[], nuance?: string, vocabHints?: { jp: string, en: string }[] }
  *
  * Rules for parts:
  *   - parts[].t values concatenated with spaces must reconstruct en exactly
@@ -48,6 +48,9 @@ ${seedExamples || '  （参考例なし）'}
     "en": "正確な英語訳",
     "parts": [
       { "t": "英文のチャンク", "r": "X|V|Y|Z", "n": "日本語の役割メモ" }
+    ],
+    "vocabHints": [
+      { "jp": "日本語の語（辞書形・基本形）", "en": "英語の原型（動詞原形・名詞単数形など）" }
     ]
   }
 ]
@@ -65,6 +68,14 @@ ${seedExamples || '  （参考例なし）'}
 - 関係詞・後置修飾の Step では jp は連体修飾（名詞の前に修飾句）を使う
   例: ○「去年出版された本はとても興味深い。」 ×「この本は、去年出版された著者による、とても興味深いです。」
 - 生成後、jp だけを読んで不自然さ・意味の矛盾がないか自己確認する
+
+vocabHints（単語ヒント）のルール:
+- jp の中で英訳に必要な語彙のうち、TOEIC 300点程度の学習者が知らない可能性が高い語だけを選ぶ
+- TOEIC 300点程度で一般的な語（book, read, go, tired, study など）は含めない
+- あくまで単語の対訳のみ。文法・構文の解説はしない（Although, who, that, whether などの接続詞・関係詞は含めない）
+- 動詞は原形（publish）、名詞は単数形（author）、形容詞は原形（fluent）で en を書く
+- 活用形や時制は jp 側に書かず、jp は辞書形・基本形（出版する、著者）にする
+- 該当語がなければ vocabHints は空配列 [] にする
 
 制約:
 - parts[].t をスペースで繋いだ文字列が en と一致すること

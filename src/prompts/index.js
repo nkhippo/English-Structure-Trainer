@@ -7,7 +7,7 @@
  * Claude returns a JSON array of Exercise objects.
  *
  * Exercise shape:
- *   { jp: string, en: string, parts: { t: string, r: "X"|"V"|"Y"|"Z", n: string }[] }
+ *   { jp: string, en: string, parts: { t: string, r: "X"|"V"|"Y"|"Z", n: string }[], nuance?: string }
  *
  * Rules for parts:
  *   - parts[].t values concatenated with spaces must reconstruct en exactly
@@ -44,7 +44,8 @@ export function buildGeneratePrompt(stepInfo, n) {
 制約:
 - parts[].t をスペースで繋いだ文字列が en と一致すること
 - 各 n は「主語」「現在進行形」「前置詞句（book を後置修飾）」のように簡潔な日本語で
-- 難易度は日常的な文を使い、学習者が理解できるレベルに保つこと`,
+- 難易度は日常的な文を使い、学習者が理解できるレベルに保つこと
+- 日本語の訳し方が1通りでない場合、模範解答のニュアンスが日本語に一致するよう jp 側の日本語を模範解答に寄せて調整すること`,
   };
 }
 

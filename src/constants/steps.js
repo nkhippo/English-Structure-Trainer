@@ -4,6 +4,14 @@
 //   2. Reference examples for the AI generation prompt
 //   3. Default first load content
 
+/**
+ * @typedef {Object} Exercise
+ * @property {string} jp
+ * @property {string} en
+ * @property {{ t: string, r: 'X'|'V'|'Y'|'Z', n: string }[]} parts
+ * @property {string} [nuance]  // 日本語訳のニュアンス補足（任意）
+ */
+
 export const STEPS = {
   3: {
     sub: '動詞の変化',
@@ -104,8 +112,9 @@ export const STEPS = {
         ],
       },
       {
-        jp: '彼女は読むべき本をたくさん持っている。',
+        jp: '彼女にはまだ読んでいない本がたくさんある。',
         en: 'She has many books to read.',
+        nuance: 'to read は「これから読む予定・積読」の意。義務ではなく量の話。',
         parts: [
           { t: 'She', r: 'X', n: '主語' },
           { t: 'has', r: 'V', n: '' },
@@ -177,6 +186,17 @@ export const STEPS = {
           { t: 'I introduced to you yesterday', r: 'Y', n: '関係詞節（who 省略・woman を後置修飾）' },
           { t: 'is', r: 'V', n: '' },
           { t: 'my boss', r: 'X', n: '補語' },
+        ],
+      },
+      {
+        jp: '彼女には読むべき（仕事上推奨される）本がたくさんある。',
+        en: 'She has many books she should read.',
+        nuance: 'should read は外部起点の義務・推奨。that 節（Y）が books を後置修飾。',
+        parts: [
+          { t: 'She', r: 'X', n: '主語' },
+          { t: 'has', r: 'V', n: '' },
+          { t: 'many books', r: 'X', n: '目的語' },
+          { t: 'she should read', r: 'Y', n: '関係詞節（that 省略・books を後置修飾）' },
         ],
       },
     ],

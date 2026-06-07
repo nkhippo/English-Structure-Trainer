@@ -5,7 +5,7 @@ const C = { card: '#FFFFFF', page: '#FAF9F6', line: '#EAE8E1', t1: '#1C1B19', t2
 /**
  * @param {{
  *   index: number,
- *   exercise: { jp: string, en: string, parts: object[] },
+ *   exercise: { jp: string, en: string, parts: object[], nuance?: string },
  *   attempt: string,
  *   evaluation: { correct: boolean, feedback: string, correction: string|null } | null,
  *   mark: 'got' | 'review' | null,
@@ -109,6 +109,12 @@ export default function QuestionCard({ index, exercise, attempt, evaluation, mar
               );
             })}
           </div>
+
+          {exercise.nuance && (
+            <p style={{ fontSize: 12, color: C.t3, fontStyle: 'italic', margin: '0 0 14px', lineHeight: 1.5 }}>
+              [ニュアンスメモ] {exercise.nuance}
+            </p>
+          )}
 
           {/* Self-assessment */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>

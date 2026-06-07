@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ROLES } from './constants/roles.js';
 import { STEPS } from './constants/steps.js';
-import { getStoredApiKey, clearApiKey, generateExercises, checkAnswers } from './api/claude.js';
+import { getStoredApiKey, clearApiKey, generateExercises, checkAnswers, EXERCISES_PER_SET } from './api/claude.js';
 import ApiKeyInput from './components/ApiKeyInput.jsx';
 import StepTabs from './components/StepTabs.jsx';
 import QuestionCard from './components/QuestionCard.jsx';
@@ -37,7 +37,7 @@ export default function App() {
     setIsGenerating(true);
     setError('');
     try {
-      const generated = await generateExercises(apiKey, sd, 5);
+      const generated = await generateExercises(apiKey, sd, EXERCISES_PER_SET);
       setExercisesByStep((prev) => ({ ...prev, [step]: generated }));
       setAttemptsByStep((prev) => ({ ...prev, [step]: {} }));
       setEvaluationsByStep((prev) => ({ ...prev, [step]: {} }));
@@ -102,7 +102,7 @@ export default function App() {
             APIキー変更
           </button>
         </div>
-        <p style={{ fontSize: 12.5, color: C.t2, margin: '0 0 14px' }}>全問を英訳 → まとめて答え合わせ（Claude API による採点）</p>
+        <p style={{ fontSize: 12.5, color: C.t2, margin: '0 0 14px' }}>{EXERCISES_PER_SET}問を英訳 → まとめて答え合わせ（Claude API による採点）</p>
 
         {/* Legend */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
@@ -126,7 +126,7 @@ export default function App() {
             padding: '9px 14px', borderRadius: 10, border: `1px solid ${C.line}`,
             background: C.card, color: C.t1, fontSize: 12, fontWeight: 600, cursor: isGenerating ? 'not-allowed' : 'pointer',
             whiteSpace: 'nowrap', opacity: isGenerating ? 0.6 : 1, fontFamily: 'inherit' }}>
-            {isGenerating ? '生成中…' : '問題を生成'}
+            {isGenerating ? '生成中…' : `${EXERCISES_PER_SET}問を生成`}
           </button>
         </div>
 

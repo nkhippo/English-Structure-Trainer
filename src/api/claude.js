@@ -3,6 +3,9 @@ import { buildGeneratePrompt, buildCheckPrompt } from '../prompts/index.js';
 const ENDPOINT = 'https://api.anthropic.com/v1/messages';
 const MODEL = 'claude-haiku-4-5-20251001';
 const MAX_TOKENS = 4096;
+
+/** Number of exercises generated and shown per session. */
+export const EXERCISES_PER_SET = 7;
 const API_KEY_STORAGE = 'est_api_key';
 
 // ── Key management ──────────────────────────────────────────────────────────
@@ -71,10 +74,10 @@ async function callClaude(apiKey, system, userMessage) {
  *
  * @param {string} apiKey
  * @param {{ sub: string, focus: string, exercises?: { jp: string, en: string }[] }} stepInfo
- * @param {number} n  Number of exercises to generate (default 5)
+ * @param {number} n  Number of exercises to generate (default EXERCISES_PER_SET)
  * @returns {Promise<Exercise[]>}
  */
-export async function generateExercises(apiKey, stepInfo, n = 5) {
+export async function generateExercises(apiKey, stepInfo, n = EXERCISES_PER_SET) {
   const { system, user } = buildGeneratePrompt(stepInfo, n);
   const raw = await callClaude(apiKey, system, user);
   const json = extractJsonArray(raw);

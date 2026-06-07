@@ -32,16 +32,17 @@ export default function QuestionCard({ index, exercise, attempt, evaluation, mar
         )}
       </div>
 
-      {/* Textarea */}
-      <textarea
-        value={attempt}
-        onChange={(e) => onAttemptChange(e.target.value)}
-        placeholder="英訳を入力…"
-        rows={2}
-        style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical', fontSize: 15, lineHeight: 1.5,
-          padding: '10px 12px', borderRadius: 10, border: `1px solid ${C.line}`,
-          color: C.t1, background: '#fff', fontFamily: 'inherit',
-          marginBottom: revealed ? 14 : 0, outline: 'none' }} />
+      {/* Textarea (hidden after answer check) */}
+      {!revealed && (
+        <textarea
+          value={attempt}
+          onChange={(e) => onAttemptChange(e.target.value)}
+          placeholder="英訳を入力…"
+          rows={2}
+          style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical', fontSize: 15, lineHeight: 1.5,
+            padding: '10px 12px', borderRadius: 10, border: `1px solid ${C.line}`,
+            color: C.t1, background: '#fff', fontFamily: 'inherit', outline: 'none' }} />
+      )}
 
       {/* Revealed section */}
       {revealed && (

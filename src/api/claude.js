@@ -69,6 +69,26 @@ async function callClaude(apiKey, system, userMessage) {
   return data.content?.[0]?.text ?? '';
 }
 
+const VALID_ROLES = new Set(['X', 'V', 'Y', 'Z']);
+
+function normalizePart(part) {
+  if (!part || typeof part.t !== 'string') return null;
+  const r = String(part.r ?? 'X').toUpperCase();
+  return {
+    t: part.t,
+    r: VALID_ROLES.has(r) ? r : 'X',
+    n: typeof part.n === 'string' ? part.n : '',
+  };
+}
+
+function normalizeExercise(ex) {
+  return {
+    ...ex,
+    parts: (ex.parts || []).map(normalizePart).filter(Boolean),
+    vocabHints: Array.isArray(ex.vocabHints) ? ex.vocabHints : [],
+  };
+}
+
 // ── Public API ───────────────────────────────────────────────────────────────
 
 /**
@@ -88,7 +108,7 @@ export async function generateExercises(apiKey, stepInfo, n = EXERCISES_PER_SET)
   if (!Array.isArray(exercises) || exercises.length === 0) {
     throw new Error('生成結果が不正です');
   }
-  return exercises;
+  return exercises.map(normalizeExercise);
 }
 
 /**

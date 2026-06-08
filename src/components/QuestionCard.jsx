@@ -4,6 +4,10 @@ import { POINTS_PER_QUESTION } from '../api/claude.js';
 
 const C = { card: '#FFFFFF', page: '#FAF9F6', line: '#EAE8E1', t1: '#1C1B19', t2: '#6B6862', t3: '#9A968D' };
 
+function roleStyle(r) {
+  return ROLES[r?.toUpperCase()] ?? ROLES.X;
+}
+
 /**
  * @param {{
  *   index: number,
@@ -17,7 +21,8 @@ const C = { card: '#FFFFFF', page: '#FAF9F6', line: '#EAE8E1', t1: '#1C1B19', t2
  * }} props
  */
 export default function QuestionCard({ index, exercise, attempt, evaluation, mark, revealed, onAttemptChange, onMark }) {
-  const { jp, en, parts } = exercise;
+  const { jp, en } = exercise;
+  const parts = (exercise.parts ?? []).filter((p) => p?.t);
 
   return (
     <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: 20, marginBottom: 12 }}>
@@ -88,7 +93,7 @@ export default function QuestionCard({ index, exercise, attempt, evaluation, mar
           <p style={{ fontSize: 10.5, fontWeight: 700, color: C.t3, margin: '0 0 5px', letterSpacing: '.05em' }}>骨格フレーム</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 12 }}>
             {parts.map((p, j) => (
-              <span key={j} style={{ fontSize: 13, fontWeight: 700, color: ROLES[p.r].text }}>
+              <span key={j} style={{ fontSize: 13, fontWeight: 700, color: roleStyle(p.r).text }}>
                 {p.r}{j < parts.length - 1 ? ' ·' : ''}
               </span>
             ))}
@@ -98,7 +103,7 @@ export default function QuestionCard({ index, exercise, attempt, evaluation, mar
           <p style={{ fontSize: 10.5, fontWeight: 700, color: C.t3, margin: '0 0 8px', letterSpacing: '.05em' }}>模範解答（語順のまま色分け）</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 8px', alignItems: 'flex-end', marginBottom: 14 }}>
             {parts.map((p, j) => {
-              const s = ROLES[p.r];
+              const s = roleStyle(p.r);
               return (
                 <span key={j} style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center' }}>
                   <span style={{ fontSize: 10.5, color: s.text, fontWeight: 700, marginBottom: 2 }}>{p.r}</span>
@@ -112,7 +117,7 @@ export default function QuestionCard({ index, exercise, attempt, evaluation, mar
           <p style={{ fontSize: 10.5, fontWeight: 700, color: C.t3, margin: '0 0 8px', letterSpacing: '.05em' }}>各チャンクの役割</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
             {parts.map((p, j) => {
-              const s = ROLES[p.r];
+              const s = roleStyle(p.r);
               return (
                 <div key={j} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
                   <span style={{ fontSize: 12, fontWeight: 600, padding: '2px 9px', borderRadius: 7,

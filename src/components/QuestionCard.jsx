@@ -1,5 +1,6 @@
 import { ROLES } from '../constants/roles.js';
 import VocabHints from './VocabHints.jsx';
+import { POINTS_PER_QUESTION } from '../api/claude.js';
 
 const C = { card: '#FFFFFF', page: '#FAF9F6', line: '#EAE8E1', t1: '#1C1B19', t2: '#6B6862', t3: '#9A968D' };
 
@@ -8,7 +9,7 @@ const C = { card: '#FFFFFF', page: '#FAF9F6', line: '#EAE8E1', t1: '#1C1B19', t2
  *   index: number,
  *   exercise: { jp: string, en: string, parts: object[], nuance?: string, vocabHints?: { jp: string, en: string }[] },
  *   attempt: string,
- *   evaluation: { correct: boolean, feedback: string, correction: string|null } | null,
+ *   evaluation: { score: number, correct: boolean, feedback: string, correction: string|null } | null,
  *   mark: 'got' | 'review' | null,
  *   revealed: boolean,
  *   onAttemptChange: (v: string) => void,
@@ -71,9 +72,14 @@ export default function QuestionCard({ index, exercise, attempt, evaluation, mar
             <div style={{ marginBottom: 14, padding: '10px 14px', borderRadius: 10,
               background: evaluation.correct ? ROLES.V.bg : ROLES.Y.bg,
               border: `1px solid ${evaluation.correct ? ROLES.V.border : ROLES.Y.border}` }}>
-              <p style={{ fontSize: 12, fontWeight: 700, margin: '0 0 4px', color: evaluation.correct ? ROLES.V.text : ROLES.Y.text }}>
-                {evaluation.correct ? '✓ 正解' : '✗ 要修正'}
-              </p>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
+                <p style={{ fontSize: 12, fontWeight: 700, margin: 0, color: evaluation.correct ? ROLES.V.text : ROLES.Y.text }}>
+                  {evaluation.correct ? '✓ 正解' : '✗ 要修正'}
+                </p>
+                <span style={{ fontSize: 13, fontWeight: 700, color: evaluation.correct ? ROLES.V.text : ROLES.Y.text }}>
+                  {evaluation.score} / {POINTS_PER_QUESTION}点
+                </span>
+              </div>
               <p style={{ fontSize: 13, margin: '0', color: C.t1, lineHeight: 1.5 }}>{evaluation.feedback}</p>
             </div>
           )}

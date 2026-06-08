@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ROLES } from './constants/roles.js';
 import { STEPS } from './constants/steps.js';
-import { getStoredApiKey, clearApiKey, generateExercises, checkAnswers, EXERCISES_PER_SET } from './api/claude.js';
+import { getStoredApiKey, clearApiKey, generateExercises, checkAnswers, EXERCISES_PER_SET, POINTS_PER_QUESTION } from './api/claude.js';
 import ApiKeyInput from './components/ApiKeyInput.jsx';
 import StepTabs from './components/StepTabs.jsx';
 import QuestionCard from './components/QuestionCard.jsx';
@@ -82,6 +82,8 @@ export default function App() {
   // ── Summary counts ───────────────────────────────────────────────────────────
   const gotCount = exercises.filter((_, i) => marks[`${step}-${i}`] === 'got').length;
   const reviewCount = exercises.filter((_, i) => marks[`${step}-${i}`] === 'review').length;
+  const totalScore = Object.values(evaluations).reduce((sum, ev) => sum + (ev?.score ?? 0), 0);
+  const maxScore = exercises.length * POINTS_PER_QUESTION;
 
   // ── API key not set ──────────────────────────────────────────────────────────
   if (!apiKey) {
@@ -164,6 +166,15 @@ export default function App() {
         ) : exercises.length > 0 ? (
           <div>
             {/* Score summary */}
+            {revealed && Object.keys(evaluations).length > 0 && (
+              <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, padding: '14px 16px',
+                marginBottom: 12, textAlign: 'center' }}>
+                <p style={{ fontSize: 12, color: C.t3, margin: '0 0 4px', fontWeight: 600 }}>合計スコア</p>
+                <p style={{ fontSize: 28, fontWeight: 700, margin: 0, color: C.t1, lineHeight: 1.2 }}>
+                  {totalScore} <span style={{ fontSize: 16, fontWeight: 600, color: C.t3 }}>/ {maxScore}点</span>
+                </p>
+              </div>
+            )}
             {(gotCount + reviewCount) > 0 && (
               <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, padding: '12px 16px',
                 display: 'flex', justifyContent: 'center', gap: 24, marginBottom: 12 }}>

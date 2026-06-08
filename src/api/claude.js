@@ -6,6 +6,8 @@ const MAX_TOKENS = 4096;
 
 /** Number of exercises generated and shown per session. */
 export const EXERCISES_PER_SET = 7;
+/** Points awarded per question (total = EXERCISES_PER_SET × POINTS_PER_QUESTION). */
+export const POINTS_PER_QUESTION = 10;
 const API_KEY_STORAGE = 'est_api_key';
 
 // ── Key management ──────────────────────────────────────────────────────────
@@ -105,5 +107,15 @@ export async function checkAnswers(apiKey, pairs) {
   if (!Array.isArray(evaluations) || evaluations.length !== pairs.length) {
     throw new Error('採点結果の件数が一致しません');
   }
-  return evaluations;
+  return evaluations.map(normalizeEvaluation);
+}
+
+function normalizeEvaluation(ev) {
+  const raw = Number(ev.score);
+  const score = Number.isFinite(raw) ? Math.min(10, Math.max(0, Math.round(raw))) : (ev.correct ? 10 : 0);
+  return {
+    ...ev,
+    score,
+    correct: score >= 8,
+  };
 }

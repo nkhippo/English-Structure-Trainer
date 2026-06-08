@@ -100,7 +100,7 @@ vocabHints（単語ヒント）のルール:
  * Claude returns a JSON array of Evaluation objects.
  *
  * Evaluation shape:
- *   { correct: boolean, feedback: string, correction: string | null }
+ *   { score: number, correct: boolean, feedback: string, correction: string | null }
  */
 export function buildCheckPrompt(pairs) {
   const items = pairs
@@ -122,20 +122,30 @@ ${items}
 返却形式（JSONのみ、${pairs.length}要素の配列）:
 [
   {
+    "score": 0〜10 の整数（各問10点満点）,
     "correct": true または false,
     "feedback": "下記の feedback ルールに従った日本語の解説",
     "correction": "誤りの場合のみ正しい英文、正解の場合は null"
   }
 ]
 
+score（10点満点）の目安:
+- 10点: 意味・文法ともに正解、または表現の差異のみで意味は完全一致
+- 7〜9点: 意味は正確だが、軽微な文法・語彙・スペルの誤りがある
+- 4〜6点: 意味はおおむね伝わるが、時制・語法・語順など重要な誤りがある
+- 1〜3点: 意味が部分的にしか伝わらない、または重大な誤りが多い
+- 0点: 未入力、または意味がほぼ伝わらない
+
 採点基準:
-- 意味が正しく伝わっていればマイナーな表現の差異は correct: true でよい
-- 文法的な誤り・時制のミス・語順の問題・意味の変化は correct: false
+- score に応じて correct を設定する（8点以上なら correct: true、7点以下なら false）
+- 意味が正しく伝わっていればマイナーな表現の差異は 8〜10点
+- 文法的な誤り・時制のミス・語順の問題・意味の変化は 7点以下
 
 feedback ルール:
-- 正解の場合: 「正解！」のみ（他の解説は不要）
-- 未入力（解答が空または「（未入力）」）の場合: 具体的な誤りの指摘のみ（翻訳による意味の比較は不要）
-- 誤りかつ解答ありの場合: 2〜3文で構成する
+- score が 10点の場合: 「正解！」のみ（他の解説は不要）
+- score が 8〜9点の場合: 軽微な誤りがあれば1文で指摘し、意味は正しく伝わっていることを伝える
+- 未入力（解答が空または「（未入力）」）の場合: score は 0、具体的な誤りの指摘のみ（翻訳による意味の比較は不要）
+- score が 7点以下かつ解答ありの場合: 2〜3文で構成する
   1. 具体的な誤りの指摘（文法・時制・語彙など、何を直すべきか）
   2. スペルミス等があれば補正したうえで、解答を日本語に訳し直した意味を示す
   3. その訳が元の日本語文の意図とどうずれるかを対比する

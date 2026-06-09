@@ -6,6 +6,7 @@ import ApiKeyInput from './components/ApiKeyInput.jsx';
 import StepTabs from './components/StepTabs.jsx';
 import QuestionCard from './components/QuestionCard.jsx';
 import ApiDebugPanel from './components/ApiDebugPanel.jsx';
+import GuideModal from './components/GuideModal.jsx';
 
 const C = { page: '#FAF9F6', card: '#FFFFFF', line: '#EAE8E1', t1: '#1C1B19', t2: '#6B6862', t3: '#9A968D', ink: '#1C1B19' };
 
@@ -16,11 +17,11 @@ export default function App() {
   const [attemptsByStep, setAttemptsByStep] = useState({});   // { step: { idx: string } }
   const [evaluationsByStep, setEvaluationsByStep] = useState({}); // { step: { idx: Evaluation } }
   const [revealedByStep, setRevealedByStep] = useState({});   // { step: boolean }
-  const [marks, setMarks] = useState({});              // { `${step}-${idx}`: 'got' | 'review' }
   const [isGenerating, setIsGenerating] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
   const [error, setError] = useState('');
   const [debugOpen, setDebugOpen] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
 
   const sd = STEPS[step];
   const exercises = exercisesByStep[step] || [];
@@ -84,9 +85,6 @@ export default function App() {
     setError('');
   };
 
-  // ── Summary counts ───────────────────────────────────────────────────────────
-  const gotCount = exercises.filter((_, i) => marks[`${step}-${i}`] === 'got').length;
-  const reviewCount = exercises.filter((_, i) => marks[`${step}-${i}`] === 'review').length;
   const totalScore = Object.values(evaluations).reduce((sum, ev) => sum + (ev?.score ?? 0), 0);
   const maxScore = exercises.length * POINTS_PER_QUESTION;
 
@@ -104,23 +102,22 @@ export default function App() {
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
           <h1 style={{ fontSize: 19, fontWeight: 700, margin: 0 }}>英文構造トレーナー</h1>
-          <button onClick={() => { clearApiKey(); setApiKey(''); }} style={{
-            fontSize: 11, color: C.t3, background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0' }}>
-            APIキー変更
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button type="button" onClick={() => setGuideOpen(true)} style={{
+              fontSize: 11, fontWeight: 600, color: C.t1, background: C.card, border: `1px solid ${C.line}`,
+              borderRadius: 8, cursor: 'pointer', padding: '5px 10px', fontFamily: 'inherit' }}>
+              構造ガイド
+            </button>
+            <button type="button" onClick={() => { clearApiKey(); setApiKey(''); }} style={{
+              fontSize: 11, color: C.t3, background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0' }}>
+              APIキー変更
+            </button>
+          </div>
         </div>
         <p style={{ fontSize: 12.5, color: C.t2, margin: '0 0 14px' }}>{EXERCISES_PER_SET}問を英訳 → まとめて答え合わせ（Claude API による採点）</p>
 
-        {/* Legend */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
-          {Object.entries(ROLES).map(([r, s]) => (
-            <span key={r} style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 20,
-              background: s.bg, color: s.text, border: `1px solid ${s.border}` }}>{s.label}</span>
-          ))}
-        </div>
-
         {/* Step tabs */}
-        <StepTabs currentStep={step} marks={marks} onSwitch={switchStep} />
+        <StepTabs currentStep={step} onSwitch={switchStep} />
 
         {/* Step desc + Generate button */}
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 16 }}>
@@ -182,10 +179,8 @@ export default function App() {
             exercise={ex}
             attempt={attempts[i] || ''}
             evaluation={evaluations[i] || null}
-            mark={marks[`${step}-${i}`] || null}
             revealed={revealed}
             onAttemptChange={(v) => setAttemptsByStep((a) => ({ ...a, [step]: { ...a[step], [i]: v } }))}
-            onMark={(v) => setMarks((m) => ({ ...m, [`${step}-${i}`]: v }))}
           />
         ))}
 
@@ -199,26 +194,17 @@ export default function App() {
             {isChecking ? 'Claude が採点中…' : `まとめて答え合わせ（${exercises.length}問）`}
           </button>
         ) : exercises.length > 0 ? (
-          <div>
-            {(gotCount + reviewCount) > 0 && (
-              <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, padding: '12px 16px',
-                display: 'flex', justifyContent: 'center', gap: 24, marginBottom: 12 }}>
-                <span style={{ fontSize: 13, color: ROLES.V.text, fontWeight: 700 }}>✓ できた {gotCount}</span>
-                <span style={{ fontSize: 13, color: ROLES.Y.text, fontWeight: 700 }}>↻ 要復習 {reviewCount}</span>
-                <span style={{ fontSize: 13, color: C.t3 }}>未採点 {exercises.length - gotCount - reviewCount}</span>
-              </div>
-            )}
-            <button onClick={handleReset} style={{
-              width: '100%', padding: 13, borderRadius: 14, cursor: 'pointer',
-              border: `1px solid ${C.line}`, background: C.card, color: C.t1,
-              fontSize: 14, fontWeight: 600, fontFamily: 'inherit' }}>
-              やり直す
-            </button>
-          </div>
+          <button onClick={handleReset} style={{
+            width: '100%', padding: 13, borderRadius: 14, cursor: 'pointer',
+            border: `1px solid ${C.line}`, background: C.card, color: C.t1,
+            fontSize: 14, fontWeight: 600, fontFamily: 'inherit' }}>
+            やり直す
+          </button>
         ) : null}
 
       </div>
 
+      <GuideModal open={guideOpen} onClose={() => setGuideOpen(false)} />
       <ApiDebugPanel open={debugOpen} onToggle={() => setDebugOpen((v) => !v)} />
     </div>
   );

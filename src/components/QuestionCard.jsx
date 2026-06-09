@@ -12,13 +12,11 @@ const C = { card: '#FFFFFF', page: '#FAF9F6', line: '#EAE8E1', t1: '#1C1B19', t2
  *   exercise: { jp: string, en: string, parts: object[], nuance?: string, vocabHints?: { jp: string, en: string }[] },
  *   attempt: string,
  *   evaluation: { score: number, correct: boolean, feedback: string, correction: string|null } | null,
- *   mark: 'got' | 'review' | null,
  *   revealed: boolean,
  *   onAttemptChange: (v: string) => void,
- *   onMark: (v: 'got' | 'review') => void,
  * }} props
  */
-export default function QuestionCard({ index, exercise, attempt, evaluation, mark, revealed, onAttemptChange, onMark }) {
+export default function QuestionCard({ index, exercise, attempt, evaluation, revealed, onAttemptChange }) {
   const { jp, en } = exercise;
   const parts = (exercise.parts ?? []).filter((p) => p?.t);
 
@@ -28,13 +26,6 @@ export default function QuestionCard({ index, exercise, attempt, evaluation, mar
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
         <span style={{ fontSize: 12, fontWeight: 700, color: C.t3, paddingTop: 3, flexShrink: 0 }}>Q{index + 1}</span>
         <p style={{ fontSize: 19, fontWeight: 600, margin: 0, lineHeight: 1.6, flex: 1, color: C.t1 }}>{jp}</p>
-        {mark && (
-          <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, flexShrink: 0, marginTop: 4,
-            background: mark === 'got' ? ROLES.V.bg : ROLES.Y.bg,
-            color: mark === 'got' ? ROLES.V.text : ROLES.Y.text }}>
-            {mark === 'got' ? 'できた' : '要復習'}
-          </span>
-        )}
       </div>
 
       <VocabHints hints={exercise.vocabHints} />
@@ -117,22 +108,6 @@ export default function QuestionCard({ index, exercise, attempt, evaluation, mar
               <p style={{ fontSize: 12, color: C.t1, margin: 0, lineHeight: 1.6 }}>{exercise.nuance}</p>
             </div>
           )}
-
-          {/* Self-assessment */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            <button onClick={() => onMark('review')} style={{
-              padding: '10px', borderRadius: 10, cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
-              border: `1px solid ${ROLES.Y.border}`, background: mark === 'review' ? ROLES.Y.text : ROLES.Y.bg,
-              color: mark === 'review' ? '#fff' : ROLES.Y.text }}>
-              ↻ 要復習
-            </button>
-            <button onClick={() => onMark('got')} style={{
-              padding: '10px', borderRadius: 10, cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
-              border: `1px solid ${ROLES.V.border}`, background: mark === 'got' ? ROLES.V.text : ROLES.V.bg,
-              color: mark === 'got' ? '#fff' : ROLES.V.text }}>
-              ✓ できた
-            </button>
-          </div>
         </div>
       )}
     </div>

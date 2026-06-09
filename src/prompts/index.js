@@ -12,17 +12,58 @@
  * Rules for parts:
  *   - parts[].t values concatenated with spaces must reconstruct en exactly
  *   - r must be one of: X (noun role), V (verb), Y (adjective role), Z (adverb role)
- *   - n is a brief Japanese note about the role
+ *   - n is a brief Japanese note: grammatical role, plus why this form/placement is chosen when relevant
+ *   - nuance explains why en is the 100-point model answer (word order, phrasing, etc.)
  */
+const THEME_POOL = [
+  '仕事・職場',
+  '旅行・観光',
+  '料理・食べ物',
+  '自然・天気',
+  '買い物・お金',
+  '学校・勉強',
+  '健康・スポーツ',
+  '趣味・娯楽',
+  '家族・友人',
+  'テクノロジー',
+  '文化・芸術',
+  '交通・移動',
+  '住まい・家具',
+  '動物・ペット',
+  '季節・イベント',
+  '地域・都市',
+  '医療・体調',
+  '環境・社会',
+];
+
+function shuffleArray(items) {
+  const copy = [...items];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
+function pickRandomItems(items, count) {
+  return shuffleArray(items).slice(0, Math.min(count, items.length));
+}
+
 function formatSeedExamples(exercises) {
-  return (exercises || [])
-    .slice(0, 2)
+  return pickRandomItems(exercises || [], 2)
     .map((ex, i) => `[例${i + 1}]\n  日本語: ${ex.jp}\n  英語: ${ex.en}`)
     .join('\n\n');
 }
 
+function formatThemeAssignment(n) {
+  return pickRandomItems(THEME_POOL, n)
+    .map((theme, i) => `  問${i + 1}: ${theme}`)
+    .join('\n');
+}
+
 export function buildGeneratePrompt(stepInfo, n) {
   const seedExamples = formatSeedExamples(stepInfo.exercises);
+  const themeAssignment = formatThemeAssignment(n);
 
   return {
     system: `あなたは英語教育の専門家です。
@@ -33,8 +74,14 @@ export function buildGeneratePrompt(stepInfo, n) {
 
 文法ポイント: ${stepInfo.sub}（${stepInfo.focus}）
 
-参考例（日本語の自然さ・文体の基準）:
+参考例（日本語の自然さ・文体の基準。テーマや内容は参考例に引きずられず、下記のテーマ割り当てに従うこと）:
 ${seedExamples || '  （参考例なし）'}
+
+テーマの多様性（必須）:
+- 各問に異なるテーマを1つずつ割り当て、jp の内容がそのテーマになるようにする
+- 同じセット内でテーマ・場面・主語・文型の重複を避ける（例: 「毎日走ることで〜」のような同型文を複数問に使わない）
+- 今回のテーマ割り当て（この順で生成し、最後に並びをランダムに入れ替える）:
+${themeAssignment}
 
 生成手順（必ずこの順番で）:
 1. まず日本語文 jp を、母語話者が違和感なく言える自然な文として書く
@@ -45,10 +92,11 @@ ${seedExamples || '  （参考例なし）'}
 [
   {
     "jp": "自然な日本語文",
-    "en": "正確な英語訳",
+    "en": "100点満点の模範英訳（最も自然で学習価値の高い表現・語順）",
     "parts": [
-      { "t": "英文のチャンク", "r": "X|V|Y|Z", "n": "日本語の役割メモ" }
+      { "t": "英文のチャンク", "r": "X|V|Y|Z", "n": "役割メモ · 語順・表現の理由（該当する場合）" }
     ],
+    "nuance": "模範解答が100点となる理由（語順・表現の選択根拠を1〜2文で）",
     "vocabHints": [
       { "jp": "日本語の語（辞書形・基本形）", "en": "英語の原型（動詞原形・名詞単数形など）" }
     ]
@@ -87,13 +135,36 @@ vocabHints（単語ヒント）のルール:
 - 活用形や時制は jp 側に書かず、jp は辞書形・基本形（出版する、著者）にする
 - 該当語がなければ vocabHints は空配列 [] にする
 
+模範解答（en）の品質要件:
+- en は「意味が通る訳」ではなく、100点満点の最良訳とする
+- 訳し方が複数ある場合、Step の文法ポイント（${stepInfo.focus}）を最も活かせる語順・表現を選ぶ
+- 例: 「毎日走ることで体を健康に保つ」→ ○ "By running every day, I keep my body fit."
+  （手段を By + 動名詞で明示し、文頭に置いて主節へ自然につなぐ）
+  × "Running every day, I keep fit my body."（語順が不自然）
+
+parts[].n の書き方:
+- 前半: 文法上の役割（例: 「分詞構文（副詞役・前置）」「目的語と補語」）
+- 後半（語順・前置・後置・表現の選択が学習ポイントのとき必須）: 「 · 」で区切り、なぜその位置・形が望ましいかを1文で
+  例: 「分詞構文（副詞役・前置） · 同時の状況を文頭で示し、主節の行動と自然につなげる」
+  例: 「手段・方法を表す前置詞句 · 日本語の「〜ことで」を By + 動名詞で明示し、文頭に置くと手段→結果の流れが明確になる」
+- 語順・位置に特別な理由がないチャンク（主語・単純な目的語など）は役割メモのみでよい
+
+nuance（必須）:
+- 模範解答全体が100点となる理由を1〜2文で書く
+- 別の訳でも意味は通るが、なぜ en の語順・表現がより望ましいかを説明する
+- 学習者が「なぜこの語順・表現なのか」を理解できる内容にする
+
 制約:
 - parts[].t をスペースで繋いだ文字列が en と一致すること
-- 各 n は「主語」「現在進行形」「前置詞句（book を後置修飾）」のように簡潔な日本語で
 - 難易度は日常的な文を使い、学習者が理解できるレベルに保つこと
-- 日本語の訳し方が1通りでない場合、模範解答のニュアンスが日本語に一致するよう jp を調整する。ただし不自然な日本語になる場合は en の方を jp に合わせて書き換える`,
+- 日本語の訳し方が1通りでない場合、模範解答のニュアンスが日本語に一致するよう jp を調整する。ただし不自然な日本語になる場合は en の方を jp に合わせて書き換える
+- ${n}問で扱う文法パターン（${stepInfo.focus}）もできるだけバラけさせ、似た構文の連続を避ける
+- JSON配列の並び順は問ごとにランダムにする（テーマ割り当ての順番と一致させない）`,
   };
 }
+
+/** Fisher–Yates shuffle for exercise ordering after API response. */
+export { shuffleArray };
 
 /**
  * Prompt for evaluating user translation attempts.
@@ -102,11 +173,19 @@ vocabHints（単語ヒント）のルール:
  * Evaluation shape:
  *   { score: number, correct: boolean, feedback: string, correction: string | null }
  */
+function formatPartsForCheck(parts) {
+  if (!parts?.length) return '';
+  const lines = parts
+    .map((p) => `  - [${p.r}] ${p.t}${p.n ? `（${p.n}）` : ''}`)
+    .join('\n');
+  return `\n構造分解:\n${lines}`;
+}
+
 export function buildCheckPrompt(pairs) {
   const items = pairs
     .map(
       (p, i) =>
-        `[${i + 1}]\n日本語: ${p.jp}\n正解: ${p.en}\n解答: ${p.attempt || '（未入力）'}`
+        `[${i + 1}]\n日本語: ${p.jp}\n模範解答（100点）: ${p.en}${p.nuance ? `\n模範解答のポイント: ${p.nuance}` : ''}${formatPartsForCheck(p.parts)}\n解答: ${p.attempt || '（未入力）'}`
     )
     .join('\n\n');
 
@@ -125,7 +204,7 @@ ${items}
     "score": 0〜10 の整数（各問10点満点）,
     "correct": true または false,
     "feedback": "下記の feedback ルールに従った日本語の解説",
-    "correction": "誤りの場合のみ正しい英文、正解の場合は null"
+    "correction": "常に null（模範解答は別途表示するため不要）"
   }
 ]
 
@@ -143,13 +222,15 @@ score（10点満点）の目安:
 
 feedback ルール:
 - score が 10点の場合: 「正解！」のみ（他の解説は不要）
-- score が 8〜9点の場合: 軽微な誤りがあれば1文で指摘し、意味は正しく伝わっていることを伝える
+- score が 8〜9点の場合: 軽微な誤りを1文で指摘し、模範解答の語順・表現がなぜより望ましいかを1文で補足する（構造分解・模範解答のポイントを参照）
 - 未入力（解答が空または「（未入力）」）の場合: score は 0、具体的な誤りの指摘のみ（翻訳による意味の比較は不要）
-- score が 7点以下かつ解答ありの場合: 2〜3文で構成する
-  1. 具体的な誤りの指摘（文法・時制・語彙など、何を直すべきか）
+- score が 7点以下かつ解答ありの場合: 3〜4文で構成する
+  1. 具体的な誤りの指摘（文法・時制・語彙・語順など、何を直すべきか）
   2. スペルミス等があれば補正したうえで、解答を日本語に訳し直した意味を示す
-  3. その訳が元の日本語文の意図とどうずれるかを対比する
-     例: 「あなたの解答を翻訳すると「理解できなかった」ではなく「理解しなかった」という意味になってしまいます。」
-- feedback は学習者が何を直すべきかわかるよう具体的に`,
+  3. その訳が元の日本語文の意図とどうずれるかを対比する（該当する場合）
+  4. 模範解答（100点）の語順・表現がなぜ望ましいかを説明する（構造分解の n や模範解答のポイントを活用）
+     例: 「手段を表す "By running every day" を文頭に置くと、日本語の「〜ことで」に対応し、手段→結果の流れが明確になります。」
+- feedback は学習者が「何を直すか」と「なぜ模範解答が100点なのか」の両方がわかるよう具体的に
+- 模範解答と異なる別解を correction として提示しない（模範解答は常に入力の「模範解答（100点）」を使う）`,
   };
 }

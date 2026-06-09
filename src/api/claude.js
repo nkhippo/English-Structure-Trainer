@@ -1,4 +1,4 @@
-import { buildGeneratePrompt, buildCheckPrompt } from '../prompts/index.js';
+import { buildGeneratePrompt, buildCheckPrompt, shuffleArray } from '../prompts/index.js';
 
 const ENDPOINT = 'https://api.anthropic.com/v1/messages';
 const MODEL = 'claude-haiku-4-5-20251001';
@@ -86,6 +86,7 @@ function normalizeExercise(ex) {
     ...ex,
     parts: (ex.parts || []).map(normalizePart).filter(Boolean),
     vocabHints: Array.isArray(ex.vocabHints) ? ex.vocabHints : [],
+    nuance: typeof ex.nuance === 'string' ? ex.nuance : '',
   };
 }
 
@@ -108,14 +109,14 @@ export async function generateExercises(apiKey, stepInfo, n = EXERCISES_PER_SET)
   if (!Array.isArray(exercises) || exercises.length === 0) {
     throw new Error('生成結果が不正です');
   }
-  return exercises.map(normalizeExercise);
+  return shuffleArray(exercises.map(normalizeExercise));
 }
 
 /**
  * Evaluate user translation attempts for all exercises in bulk.
  *
  * @param {string} apiKey
- * @param {{ jp: string, en: string, attempt: string }[]} pairs
+ * @param {{ jp: string, en: string, attempt: string, parts?: object[], nuance?: string }[]} pairs
  * @returns {Promise<Evaluation[]>}
  */
 export async function checkAnswers(apiKey, pairs) {

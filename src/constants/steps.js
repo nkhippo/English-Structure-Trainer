@@ -6,7 +6,7 @@
  * @property {string} jp
  * @property {string} en
  * @property {{ t: string, r: 'X'|'V'|'Y'|'Z', n: string }[]} parts
- * @property {string} [nuance]  // 日本語訳のニュアンス補足（任意）
+ * @property {string} [nuance]  // 模範解答が100点となる理由（語順・表現の選択根拠）
  * @property {{ jp: string, en: string }[]} [vocabHints]  // 単語ヒント（任意）
  */
 
@@ -113,7 +113,7 @@ export const STEPS = {
       {
         jp: '彼女にはまだ読んでいない本がたくさんある。',
         en: 'She has many books to read.',
-        nuance: 'to read は「これから読む予定・積読」の意。義務ではなく量の話。',
+        nuance: 'to read は「これから読む予定・積読」の意。義務ではなく量の話。不定詞を名詞の後ろに置くことで「読むべき本」という後置修飾の英語語順を体現する。',
         parts: [
           { t: 'She', r: 'X', n: '主語' },
           { t: 'has', r: 'V', n: '' },
@@ -125,11 +125,12 @@ export const STEPS = {
         jp: '家に帰りながら、彼は音楽を聴いた。',
         en: 'Walking home, he listened to music.',
         parts: [
-          { t: 'Walking home', r: 'Z', n: '分詞構文（副詞役・前置）' },
+          { t: 'Walking home', r: 'Z', n: '分詞構文（副詞役・前置） · 同時の状況を文頭で示し、主節の行動と自然につなげる' },
           { t: 'he', r: 'X', n: '主語' },
           { t: 'listened to', r: 'V', n: '過去形' },
           { t: 'music', r: 'X', n: '目的語' },
         ],
+        nuance: '「〜ながら」の同時性は分詞構文を文頭に置くのが自然。主語 he を分詞構文の暗黙の主語と一致させる。',
       },
       {
         jp: '彼女は疲れているように見えた。',

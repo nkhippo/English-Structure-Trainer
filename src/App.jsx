@@ -58,6 +58,8 @@ export default function App() {
         jp: ex.jp,
         en: ex.en,
         attempt: attempts[i] || '',
+        parts: ex.parts,
+        nuance: ex.nuance,
       }));
       const results = await checkAnswers(apiKey, pairs);
       const evalMap = {};

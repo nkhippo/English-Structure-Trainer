@@ -64,13 +64,11 @@ export default function QuestionCard({ index, exercise, attempt, evaluation, mar
             </div>
           )}
 
-          {/* Model answer */}
-          {evaluation?.correction && (
-            <div style={{ marginBottom: 12 }}>
-              <p style={{ fontSize: 10.5, fontWeight: 700, color: C.t3, margin: '0 0 5px', letterSpacing: '.05em' }}>模範解答</p>
-              <div style={{ background: C.page, borderRadius: 10, padding: '8px 12px', fontSize: 15, color: C.t2, lineHeight: 1.5 }}>{evaluation.correction}</div>
-            </div>
-          )}
+          {/* Model answer (100-point reference) */}
+          <div style={{ marginBottom: 12 }}>
+            <p style={{ fontSize: 10.5, fontWeight: 700, color: C.t3, margin: '0 0 5px', letterSpacing: '.05em' }}>模範解答</p>
+            <div style={{ background: C.page, borderRadius: 10, padding: '8px 12px', fontSize: 15, color: C.t2, lineHeight: 1.5 }}>{en}</div>
+          </div>
 
           {/* AI evaluation */}
           {evaluation && (
@@ -130,9 +128,10 @@ export default function QuestionCard({ index, exercise, attempt, evaluation, mar
           </div>
 
           {exercise.nuance && (
-            <p style={{ fontSize: 12, color: C.t3, fontStyle: 'italic', margin: '0 0 14px', lineHeight: 1.5 }}>
-              [ニュアンスメモ] {exercise.nuance}
-            </p>
+            <div style={{ marginBottom: 14, padding: '10px 14px', borderRadius: 10, background: C.page, border: `1px solid ${C.line}` }}>
+              <p style={{ fontSize: 10.5, fontWeight: 700, color: C.t3, margin: '0 0 4px', letterSpacing: '.05em' }}>模範解答のポイント</p>
+              <p style={{ fontSize: 12, color: C.t1, margin: 0, lineHeight: 1.6 }}>{exercise.nuance}</p>
+            </div>
           )}
 
           {/* Self-assessment */}

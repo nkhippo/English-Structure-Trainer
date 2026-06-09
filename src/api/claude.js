@@ -3,7 +3,9 @@ import { normalizePart } from '../utils/parts.js';
 
 const ENDPOINT = 'https://api.anthropic.com/v1/messages';
 const MODEL = 'claude-haiku-4-5-20251001';
-const MAX_TOKENS = 4096;
+const MAX_TOKENS_CHECK = 4096;
+const MAX_TOKENS_GENERATE = 8192;
+const GENERATE_RETRIES = 2;
 
 /** Number of exercises generated and shown per session. */
 export const EXERCISES_PER_SET = 7;
@@ -27,22 +29,73 @@ export function clearApiKey() {
 
 // ── JSON extraction ──────────────────────────────────────────────────────────
 
+function sanitizeJsonText(text) {
+  return text
+    .replace(/```(?:json)?\s*/gi, '')
+    .replace(/```/g, '')
+    .replace(/[\u201c\u201d\u201e\u201f]/g, '"')
+    .replace(/[\u2018\u2019\u201a\u201b]/g, "'");
+}
+
 /**
- * Extract a JSON array from Claude's text response.
- * Handles markdown fences and stray surrounding text.
+ * Extract a JSON array using bracket matching (string-aware).
  */
 function extractJsonArray(text) {
-  const start = text.indexOf('[');
-  const end = text.lastIndexOf(']');
-  if (start === -1 || end <= start) {
+  const cleaned = sanitizeJsonText(text);
+  const start = cleaned.indexOf('[');
+  if (start === -1) {
     throw new Error('レスポンスからJSON配列を抽出できませんでした');
   }
-  return text.slice(start, end + 1);
+
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let i = start; i < cleaned.length; i++) {
+    const ch = cleaned[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === '\\') escaped = true;
+      else if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+      continue;
+    }
+    if (ch === '[') depth++;
+    else if (ch === ']') {
+      depth--;
+      if (depth === 0) return cleaned.slice(start, i + 1);
+    }
+  }
+
+  throw new Error('JSON配列が途中で切れています（出力トークン上限の可能性があります）');
+}
+
+function parseJsonArray(text) {
+  const json = extractJsonArray(text);
+  const candidates = [json, json.replace(/,\s*([\]}])/g, '$1')];
+  let lastError;
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate);
+      if (Array.isArray(parsed)) return parsed;
+    } catch (e) {
+      lastError = e;
+    }
+  }
+  throw lastError ?? new Error('JSONの解析に失敗しました');
 }
 
 // ── Core fetch wrapper ───────────────────────────────────────────────────────
 
-async function callClaude(apiKey, system, userMessage) {
+async function callClaude(apiKey, system, userMessage, { maxTokens = MAX_TOKENS_CHECK, prefill } = {}) {
+  const messages = [{ role: 'user', content: userMessage }];
+  if (prefill) {
+    messages.push({ role: 'assistant', content: prefill });
+  }
+
   const res = await fetch(ENDPOINT, {
     method: 'POST',
     headers: {
@@ -55,9 +108,9 @@ async function callClaude(apiKey, system, userMessage) {
     },
     body: JSON.stringify({
       model: MODEL,
-      max_tokens: MAX_TOKENS,
+      max_tokens: maxTokens,
       system,
-      messages: [{ role: 'user', content: userMessage }],
+      messages,
     }),
   });
 
@@ -67,7 +120,8 @@ async function callClaude(apiKey, system, userMessage) {
   }
 
   const data = await res.json();
-  return data.content?.[0]?.text ?? '';
+  const text = data.content?.[0]?.text ?? '';
+  return prefill ? prefill + text : text;
 }
 
 function normalizeExercise(ex) {
@@ -91,14 +145,26 @@ function normalizeExercise(ex) {
  */
 export async function generateExercises(apiKey, stepInfo, n = EXERCISES_PER_SET) {
   const { system, user } = buildGeneratePrompt(stepInfo, n);
-  const raw = await callClaude(apiKey, system, user);
-  const json = extractJsonArray(raw);
-  const exercises = JSON.parse(json);
+  let lastError;
 
-  if (!Array.isArray(exercises) || exercises.length === 0) {
-    throw new Error('生成結果が不正です');
+  for (let attempt = 0; attempt < GENERATE_RETRIES; attempt++) {
+    try {
+      const raw = await callClaude(apiKey, system, user, {
+        maxTokens: MAX_TOKENS_GENERATE,
+        prefill: '[',
+      });
+      const exercises = parseJsonArray(raw);
+
+      if (!Array.isArray(exercises) || exercises.length === 0) {
+        throw new Error('生成結果が不正です');
+      }
+      return shuffleArray(exercises.map(normalizeExercise));
+    } catch (e) {
+      lastError = e;
+    }
   }
-  return shuffleArray(exercises.map(normalizeExercise));
+
+  throw lastError;
 }
 
 /**
@@ -110,9 +176,8 @@ export async function generateExercises(apiKey, stepInfo, n = EXERCISES_PER_SET)
  */
 export async function checkAnswers(apiKey, pairs) {
   const { system, user } = buildCheckPrompt(pairs);
-  const raw = await callClaude(apiKey, system, user);
-  const json = extractJsonArray(raw);
-  const evaluations = JSON.parse(json);
+  const raw = await callClaude(apiKey, system, user, { prefill: '[' });
+  const evaluations = parseJsonArray(raw);
 
   if (!Array.isArray(evaluations) || evaluations.length !== pairs.length) {
     throw new Error('採点結果の件数が一致しません');

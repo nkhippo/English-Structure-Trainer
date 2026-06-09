@@ -140,6 +140,36 @@ export default function App() {
           </div>
         )}
 
+        {/* Score summary (top) */}
+        {revealed && Object.keys(evaluations).length > 0 && (
+          <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, padding: '14px 16px', marginBottom: 14 }}>
+            <p style={{ fontSize: 12, color: C.t3, margin: '0 0 4px', fontWeight: 600, textAlign: 'center' }}>合計スコア</p>
+            <p style={{ fontSize: 28, fontWeight: 700, margin: '0 0 14px', color: C.t1, lineHeight: 1.2, textAlign: 'center' }}>
+              {totalScore} <span style={{ fontSize: 16, fontWeight: 600, color: C.t3 }}>/ {maxScore}点</span>
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(72px, 1fr))', gap: 8 }}>
+              {exercises.map((_, i) => {
+                const ev = evaluations[i];
+                const correct = ev?.correct;
+                const scoreColor = correct ? ROLES.V.text : ROLES.Y.text;
+                const scoreBg = correct ? ROLES.V.bg : ROLES.Y.bg;
+                const scoreBorder = correct ? ROLES.V.border : ROLES.Y.border;
+                return (
+                  <div key={i} style={{
+                    textAlign: 'center', padding: '8px 6px', borderRadius: 10,
+                    background: scoreBg, border: `1px solid ${scoreBorder}`,
+                  }}>
+                    <p style={{ fontSize: 11, fontWeight: 700, color: C.t3, margin: '0 0 2px' }}>Q{i + 1}</p>
+                    <p style={{ fontSize: 15, fontWeight: 700, margin: 0, color: scoreColor }}>
+                      {ev?.score ?? 0}<span style={{ fontSize: 11, fontWeight: 600 }}>/{POINTS_PER_QUESTION}</span>
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Question cards */}
         {exercises.map((ex, i) => (
           <QuestionCard
@@ -166,16 +196,6 @@ export default function App() {
           </button>
         ) : exercises.length > 0 ? (
           <div>
-            {/* Score summary */}
-            {revealed && Object.keys(evaluations).length > 0 && (
-              <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, padding: '14px 16px',
-                marginBottom: 12, textAlign: 'center' }}>
-                <p style={{ fontSize: 12, color: C.t3, margin: '0 0 4px', fontWeight: 600 }}>合計スコア</p>
-                <p style={{ fontSize: 28, fontWeight: 700, margin: 0, color: C.t1, lineHeight: 1.2 }}>
-                  {totalScore} <span style={{ fontSize: 16, fontWeight: 600, color: C.t3 }}>/ {maxScore}点</span>
-                </p>
-              </div>
-            )}
             {(gotCount + reviewCount) > 0 && (
               <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, padding: '12px 16px',
                 display: 'flex', justifyContent: 'center', gap: 24, marginBottom: 12 }}>

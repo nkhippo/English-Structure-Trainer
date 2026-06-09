@@ -64,6 +64,7 @@ export default function App() {
       results.forEach((r, i) => { evalMap[i] = r; });
       setEvaluationsByStep((prev) => ({ ...prev, [step]: evalMap }));
       setRevealedByStep((prev) => ({ ...prev, [step]: true }));
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (e) {
       setError(`採点エラー: ${e.message}`);
     } finally {

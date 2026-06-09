@@ -5,7 +5,7 @@
  * @typedef {Object} Exercise
  * @property {string} jp
  * @property {string} en
- * @property {{ t: string, r: 'X'|'V'|'Y'|'Z', n: string }[]} parts
+ * @property {{ t: string, r: 'X'|'V'|'Y'|'Z', n: string, inner?: { t: string, r: 'X'|'V'|'Y'|'Z', n: string, inner?: object[] }[] }[]} parts
  * @property {string} [nuance]  // 模範解答が100点となる理由（語順・表現の選択根拠）
  * @property {{ jp: string, en: string }[]} [vocabHints]  // 単語ヒント（任意）
  */
@@ -192,7 +192,17 @@ export const STEPS = {
         en: 'The book that I bought yesterday is interesting.',
         parts: [
           { t: 'The book', r: 'X', n: '主語（名詞）' },
-          { t: 'that I bought yesterday', r: 'Y', n: '関係詞節（book を後置修飾）' },
+          {
+            t: 'that I bought yesterday',
+            r: 'Y',
+            n: '関係詞節（book を後置修飾）',
+            inner: [
+              { t: 'that', r: 'X', n: '関係代名詞（目的語）' },
+              { t: 'I', r: 'X', n: '主語' },
+              { t: 'bought', r: 'V', n: '過去形' },
+              { t: 'yesterday', r: 'Z', n: '時の副詞' },
+            ],
+          },
           { t: 'is', r: 'V', n: '' },
           { t: 'interesting', r: 'Y', n: '補語' },
         ],
@@ -204,7 +214,17 @@ export const STEPS = {
           { t: 'He', r: 'X', n: '主語' },
           { t: 'is', r: 'V', n: '' },
           { t: 'a man', r: 'X', n: '補語' },
-          { t: 'who speaks English fluently', r: 'Y', n: '関係詞節（man を後置修飾）' },
+          {
+            t: 'who speaks English fluently',
+            r: 'Y',
+            n: '関係詞節（man を後置修飾）',
+            inner: [
+              { t: 'who', r: 'X', n: '関係代名詞（主語）' },
+              { t: 'speaks', r: 'V', n: '現在形（三単現）' },
+              { t: 'English', r: 'X', n: '目的語' },
+              { t: 'fluently', r: 'Z', n: '様態の副詞' },
+            ],
+          },
         ],
         vocabHints: [{ jp: '流暢に', en: 'fluent' }],
       },
@@ -253,11 +273,47 @@ export const STEPS = {
         ],
       },
       {
+        jp: '公園を散歩するのが好きな高齢者たちは、毎朝集まる。',
+        en: 'The elderly people who like taking walks in the park gather every morning.',
+        parts: [
+          { t: 'The elderly people', r: 'X', n: '主語' },
+          {
+            t: 'who like taking walks in the park',
+            r: 'Y',
+            n: '関係詞節（主語を後置修飾）',
+            inner: [
+              { t: 'who', r: 'X', n: '関係代名詞（主語）' },
+              { t: 'like', r: 'V', n: '動詞（現在形）' },
+              {
+                t: 'taking walks in the park',
+                r: 'X',
+                n: '目的語（動名詞句）',
+                inner: [
+                  { t: 'taking walks', r: 'X', n: '動名詞句' },
+                  { t: 'in the park', r: 'Z', n: '場所の前置詞句' },
+                ],
+              },
+            ],
+          },
+          { t: 'gather', r: 'V', n: '動詞（現在形）' },
+          { t: 'every morning', r: 'Z', n: '時の副詞句' },
+        ],
+      },
+      {
         jp: '彼が嘘をついたという事実は変えられない。',
         en: 'The fact that he lied cannot be changed.',
         parts: [
           { t: 'The fact', r: 'X', n: '主語（名詞）' },
-          { t: 'that he lied', r: 'Y', n: '同格節（fact の内容を説明・Y/Clause）' },
+          {
+            t: 'that he lied',
+            r: 'Y',
+            n: '同格節（fact の内容を説明・Y/Clause）',
+            inner: [
+              { t: 'that', r: 'X', n: '接続詞（同格）' },
+              { t: 'he', r: 'X', n: '主語' },
+              { t: 'lied', r: 'V', n: '過去形' },
+            ],
+          },
           { t: 'cannot be changed', r: 'V', n: '助動詞+受動態' },
         ],
         vocabHints: [
@@ -317,10 +373,28 @@ export const STEPS = {
         en: 'People who work with me work hard when an issue arises.',
         parts: [
           { t: 'People', r: 'X', n: '主語（名詞）' },
-          { t: 'who work with me', r: 'Y', n: '関係詞節（People を後置修飾）' },
+          {
+            t: 'who work with me',
+            r: 'Y',
+            n: '関係詞節（People を後置修飾）',
+            inner: [
+              { t: 'who', r: 'X', n: '関係代名詞（主語）' },
+              { t: 'work', r: 'V', n: '現在形' },
+              { t: 'with me', r: 'Z', n: '前置詞句（一緒に）' },
+            ],
+          },
           { t: 'work', r: 'V', n: '現在形' },
           { t: 'hard', r: 'Z', n: '様態の副詞' },
-          { t: 'when an issue arises', r: 'Z', n: '副詞節（内部にも X+V がネスト）' },
+          {
+            t: 'when an issue arises',
+            r: 'Z',
+            n: '副詞節（内部にも X+V がネスト）',
+            inner: [
+              { t: 'when', r: 'Z', n: '接続副詞' },
+              { t: 'an issue', r: 'X', n: '主語' },
+              { t: 'arises', r: 'V', n: '現在形（三単現）' },
+            ],
+          },
         ],
         vocabHints: [
           { jp: '問題', en: 'issue' },

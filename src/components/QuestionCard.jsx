@@ -1,12 +1,10 @@
 import { ROLES } from '../constants/roles.js';
+import { roleStyle } from '../utils/parts.js';
 import VocabHints from './VocabHints.jsx';
+import { ColorChunk, DetailChunk } from './PartBreakdown.jsx';
 import { POINTS_PER_QUESTION } from '../api/claude.js';
 
 const C = { card: '#FFFFFF', page: '#FAF9F6', line: '#EAE8E1', t1: '#1C1B19', t2: '#6B6862', t3: '#9A968D' };
-
-function roleStyle(r) {
-  return ROLES[r?.toUpperCase()] ?? ROLES.X;
-}
 
 /**
  * @param {{
@@ -100,31 +98,17 @@ export default function QuestionCard({ index, exercise, attempt, evaluation, mar
           {/* Color-coded answer */}
           <p style={{ fontSize: 10.5, fontWeight: 700, color: C.t3, margin: '0 0 8px', letterSpacing: '.05em' }}>模範解答（語順のまま色分け）</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 8px', alignItems: 'flex-end', marginBottom: 14 }}>
-            {parts.map((p, j) => {
-              const s = roleStyle(p.r);
-              return (
-                <span key={j} style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <span style={{ fontSize: 10.5, color: s.text, fontWeight: 700, marginBottom: 2 }}>{p.r}</span>
-                  <span style={{ fontSize: 17, color: C.t1, borderBottom: `2.5px solid ${s.line}`, paddingBottom: 2, lineHeight: 1.4 }}>{p.t}</span>
-                </span>
-              );
-            })}
+            {parts.map((p, j) => (
+              <ColorChunk key={j} part={p} />
+            ))}
           </div>
 
           {/* Detail chips */}
           <p style={{ fontSize: 10.5, fontWeight: 700, color: C.t3, margin: '0 0 8px', letterSpacing: '.05em' }}>各チャンクの役割</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
-            {parts.map((p, j) => {
-              const s = roleStyle(p.r);
-              return (
-                <div key={j} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, padding: '2px 9px', borderRadius: 7,
-                    background: s.bg, color: s.text, border: `1px solid ${s.border}`,
-                    flexShrink: 0, lineHeight: 1.5 }}>{p.t}</span>
-                  <span style={{ fontSize: 12, color: C.t2, lineHeight: 1.5 }}>{s.label}{p.n ? ` · ${p.n}` : ''}</span>
-                </div>
-              );
-            })}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
+            {parts.map((p, j) => (
+              <DetailChunk key={j} part={p} />
+            ))}
           </div>
 
           {exercise.nuance && (

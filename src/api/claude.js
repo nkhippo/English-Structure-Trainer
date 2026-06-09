@@ -1,4 +1,5 @@
 import { buildGeneratePrompt, buildCheckPrompt, shuffleArray } from '../prompts/index.js';
+import { normalizePart } from '../utils/parts.js';
 
 const ENDPOINT = 'https://api.anthropic.com/v1/messages';
 const MODEL = 'claude-haiku-4-5-20251001';
@@ -67,18 +68,6 @@ async function callClaude(apiKey, system, userMessage) {
 
   const data = await res.json();
   return data.content?.[0]?.text ?? '';
-}
-
-const VALID_ROLES = new Set(['X', 'V', 'Y', 'Z']);
-
-function normalizePart(part) {
-  if (!part || typeof part.t !== 'string') return null;
-  const r = String(part.r ?? 'X').toUpperCase();
-  return {
-    t: part.t,
-    r: VALID_ROLES.has(r) ? r : 'X',
-    n: typeof part.n === 'string' ? part.n : '',
-  };
 }
 
 function normalizeExercise(ex) {

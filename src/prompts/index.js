@@ -1,3 +1,5 @@
+import { formatPartsForCheck } from '../utils/parts.js';
+
 // Prompt templates for Claude API calls.
 // Both prompts instruct Claude to return JSON-only responses
 // to enable reliable parsing.
@@ -7,12 +9,17 @@
  * Claude returns a JSON array of Exercise objects.
  *
  * Exercise shape:
- *   { jp: string, en: string, parts: { t: string, r: "X"|"V"|"Y"|"Z", n: string }[], nuance?: string, vocabHints?: { jp: string, en: string }[] }
+ *   { jp: string, en: string, parts: Part[], nuance?: string, vocabHints?: { jp: string, en: string }[] }
+ *
+ * Part shape (recursive):
+ *   { t: string, r: "X"|"V"|"Y"|"Z", n: string, inner?: Part[] }
  *
  * Rules for parts:
- *   - parts[].t values concatenated with spaces must reconstruct en exactly
+ *   - Top-level parts[].t values concatenated with spaces must reconstruct en exactly
+ *   - inner[].t values concatenated with spaces must equal parent t (when inner is present)
  *   - r must be one of: X (noun role), V (verb), Y (adjective role), Z (adverb role)
  *   - n is a brief Japanese note: grammatical role, plus why this form/placement is chosen when relevant
+ *   - inner shows nested X/Y/Z inside Y/Z/X chunks (relative clauses, adverb clauses, noun clauses)
  *   - nuance explains why en is the 100-point model answer (word order, phrasing, etc.)
  */
 const THEME_POOL = [
@@ -94,7 +101,14 @@ ${themeAssignment}
     "jp": "自然な日本語文",
     "en": "100点満点の模範英訳（最も自然で学習価値の高い表現・語順）",
     "parts": [
-      { "t": "英文のチャンク", "r": "X|V|Y|Z", "n": "役割メモ · 語順・表現の理由（該当する場合）" }
+      {
+        "t": "英文のチャンク",
+        "r": "X|V|Y|Z",
+        "n": "役割メモ · 語順・表現の理由（該当する場合）",
+        "inner": [
+          { "t": "内部チャンク", "r": "X|V|Y|Z", "n": "内部の役割メモ（句・節を含む場合のみ）" }
+        ]
+      }
     ],
     "nuance": "模範解答が100点となる理由（語順・表現の選択根拠を1〜2文で）",
     "vocabHints": [
@@ -142,6 +156,34 @@ vocabHints（単語ヒント）のルール:
   （手段を By + 動名詞で明示し、文頭に置いて主節へ自然につなぐ）
   × "Running every day, I keep fit my body."（語順が不自然）
 
+parts[].inner（ネスト構造・再帰的）:
+- X/Y/Z のルールは句・節の内部にも再帰的に適用する
+- 関係詞節（Y）・副詞節（Z）・名詞節（X）など、内部に骨格（X+V など）を持つチャンクには inner を必ず付ける
+- inner 内の t をスペースで繋いだ文字列は、親チャンクの t と一致すること
+- inner の中にさらに句・節があれば、inner を再帰的にネストしてよい（最大2段まで）
+- 単純な主語・動詞・単語の副詞など、内部に分解する意味がないチャンクは inner を省略
+
+inner の例（関係詞節）:
+  "t": "who like taking walks in the park", "r": "Y", "n": "関係詞節（主語を後置修飾）",
+  "inner": [
+    { "t": "who", "r": "X", "n": "関係代名詞（主語）" },
+    { "t": "like", "r": "V", "n": "動詞（現在形）" },
+    { "t": "taking walks in the park", "r": "X", "n": "目的語（動名詞句）",
+      "inner": [
+        { "t": "taking walks", "r": "X", "n": "動名詞句" },
+        { "t": "in the park", "r": "Z", "n": "場所の前置詞句" }
+      ]
+    }
+  ]
+
+inner の例（副詞節）:
+  "t": "when an issue arises", "r": "Z", "n": "副詞節",
+  "inner": [
+    { "t": "when", "r": "Z", "n": "接続副詞" },
+    { "t": "an issue", "r": "X", "n": "主語" },
+    { "t": "arises", "r": "V", "n": "動詞（現在形）" }
+  ]
+
 parts[].n の書き方:
 - 前半: 文法上の役割（例: 「分詞構文（副詞役・前置）」「目的語と補語」）
 - 後半（語順・前置・後置・表現の選択が学習ポイントのとき必須）: 「 · 」で区切り、なぜその位置・形が望ましいかを1文で
@@ -173,14 +215,6 @@ export { shuffleArray };
  * Evaluation shape:
  *   { score: number, correct: boolean, feedback: string, correction: string | null }
  */
-function formatPartsForCheck(parts) {
-  if (!parts?.length) return '';
-  const lines = parts
-    .map((p) => `  - [${p.r}] ${p.t}${p.n ? `（${p.n}）` : ''}`)
-    .join('\n');
-  return `\n構造分解:\n${lines}`;
-}
-
 export function buildCheckPrompt(pairs) {
   const items = pairs
     .map(

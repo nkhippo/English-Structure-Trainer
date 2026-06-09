@@ -1,9 +1,13 @@
 import { buildGeneratePrompt, buildCheckPrompt, shuffleArray } from '../prompts/index.js';
+import { pushApiDebugLog } from './debugLog.js';
 import { normalizePart } from '../utils/parts.js';
 
 const ENDPOINT = 'https://api.anthropic.com/v1/messages';
 const MODEL = 'claude-haiku-4-5-20251001';
 const MAX_TOKENS = 4096;
+
+/** Current max_tokens ceiling (for debug UI). */
+export const API_MAX_TOKENS = MAX_TOKENS;
 
 /** Number of exercises generated and shown per session. */
 export const EXERCISES_PER_SET = 7;
@@ -88,7 +92,7 @@ function parseJsonArray(text) {
 
 // ── Core fetch wrapper ───────────────────────────────────────────────────────
 
-async function callClaude(apiKey, system, userMessage, { prefill } = {}) {
+async function callClaude(apiKey, system, userMessage, { prefill, debug } = {}) {
   const messages = [{ role: 'user', content: userMessage }];
   if (prefill) {
     messages.push({ role: 'assistant', content: prefill });
@@ -119,7 +123,21 @@ async function callClaude(apiKey, system, userMessage, { prefill } = {}) {
 
   const data = await res.json();
   const text = data.content?.[0]?.text ?? '';
-  return prefill ? prefill + text : text;
+  const fullText = prefill ? prefill + text : text;
+
+  if (debug) {
+    pushApiDebugLog({
+      operation: debug.operation,
+      step: debug.step ?? null,
+      input_tokens: data.usage?.input_tokens ?? null,
+      output_tokens: data.usage?.output_tokens ?? null,
+      stop_reason: data.stop_reason ?? null,
+      max_tokens: MAX_TOKENS,
+      response_chars: fullText.length,
+    });
+  }
+
+  return fullText;
 }
 
 function normalizeExercise(ex) {
@@ -141,9 +159,12 @@ function normalizeExercise(ex) {
  * @param {number} n  Number of exercises to generate (default EXERCISES_PER_SET)
  * @returns {Promise<Exercise[]>}
  */
-export async function generateExercises(apiKey, stepInfo, n = EXERCISES_PER_SET) {
+export async function generateExercises(apiKey, stepInfo, n = EXERCISES_PER_SET, { step } = {}) {
   const { system, user } = buildGeneratePrompt(stepInfo, n);
-  const raw = await callClaude(apiKey, system, user, { prefill: '[' });
+  const raw = await callClaude(apiKey, system, user, {
+    prefill: '[',
+    debug: { operation: 'generate', step: step ?? null },
+  });
   const exercises = parseJsonArray(raw);
 
   if (!Array.isArray(exercises) || exercises.length === 0) {
@@ -159,9 +180,12 @@ export async function generateExercises(apiKey, stepInfo, n = EXERCISES_PER_SET)
  * @param {{ jp: string, en: string, attempt: string, parts?: object[], nuance?: string }[]} pairs
  * @returns {Promise<Evaluation[]>}
  */
-export async function checkAnswers(apiKey, pairs) {
+export async function checkAnswers(apiKey, pairs, { step } = {}) {
   const { system, user } = buildCheckPrompt(pairs);
-  const raw = await callClaude(apiKey, system, user, { prefill: '[' });
+  const raw = await callClaude(apiKey, system, user, {
+    prefill: '[',
+    debug: { operation: 'check', step: step ?? null },
+  });
   const evaluations = parseJsonArray(raw);
 
   if (!Array.isArray(evaluations) || evaluations.length !== pairs.length) {

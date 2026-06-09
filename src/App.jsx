@@ -5,6 +5,7 @@ import { getStoredApiKey, clearApiKey, generateExercises, checkAnswers, EXERCISE
 import ApiKeyInput from './components/ApiKeyInput.jsx';
 import StepTabs from './components/StepTabs.jsx';
 import QuestionCard from './components/QuestionCard.jsx';
+import ApiDebugPanel from './components/ApiDebugPanel.jsx';
 
 const C = { page: '#FAF9F6', card: '#FFFFFF', line: '#EAE8E1', t1: '#1C1B19', t2: '#6B6862', t3: '#9A968D', ink: '#1C1B19' };
 
@@ -19,6 +20,7 @@ export default function App() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
   const [error, setError] = useState('');
+  const [debugOpen, setDebugOpen] = useState(false);
 
   const sd = STEPS[step];
   const exercises = exercisesByStep[step] || [];
@@ -37,7 +39,7 @@ export default function App() {
     setIsGenerating(true);
     setError('');
     try {
-      const generated = await generateExercises(apiKey, sd, EXERCISES_PER_SET);
+      const generated = await generateExercises(apiKey, sd, EXERCISES_PER_SET, { step });
       setExercisesByStep((prev) => ({ ...prev, [step]: generated }));
       setAttemptsByStep((prev) => ({ ...prev, [step]: {} }));
       setEvaluationsByStep((prev) => ({ ...prev, [step]: {} }));
@@ -61,7 +63,7 @@ export default function App() {
         parts: ex.parts,
         nuance: ex.nuance,
       }));
-      const results = await checkAnswers(apiKey, pairs);
+      const results = await checkAnswers(apiKey, pairs, { step });
       const evalMap = {};
       results.forEach((r, i) => { evalMap[i] = r; });
       setEvaluationsByStep((prev) => ({ ...prev, [step]: evalMap }));
@@ -94,7 +96,7 @@ export default function App() {
   }
 
   return (
-    <div style={{ background: C.page, minHeight: '100vh', padding: '18px 16px 60px',
+    <div style={{ background: C.page, minHeight: '100vh', padding: `18px 16px ${debugOpen ? 280 : 48}px`,
       fontFamily: "'Hiragino Sans','Hiragino Kaku Gothic ProN','Yu Gothic','Meiryo',system-ui,sans-serif",
       color: C.t1 }}>
       <div style={{ maxWidth: 620, margin: '0 auto' }}>
@@ -216,6 +218,8 @@ export default function App() {
         ) : null}
 
       </div>
+
+      <ApiDebugPanel open={debugOpen} onToggle={() => setDebugOpen((v) => !v)} />
     </div>
   );
 }

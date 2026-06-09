@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { clearApiDebugLog, subscribeApiDebugLog } from '../api/debugLog.js';
-import { API_MAX_TOKENS } from '../api/claude.js';
+import { API_MAX_TOKENS_CHECK, API_MAX_TOKENS_GENERATE } from '../api/claude.js';
 
 const C = { card: '#FFFFFF', line: '#EAE8E1', t1: '#1C1B19', t2: '#6B6862', t3: '#9A968D' };
 
@@ -76,7 +76,7 @@ export default function ApiDebugPanel({ open, onToggle }) {
             「7問を生成」「答え合わせ」のたびに1行追加されます。
             <strong style={{ color: C.t1 }}> output_tokens</strong> が実際の出力量、
             <strong style={{ color: C.t1 }}> stop_reason</strong> が終了理由です。
-            現在の上限は <strong>{API_MAX_TOKENS}</strong> トークン。
+            現在の上限は 問題生成 <strong>{API_MAX_TOKENS_GENERATE}</strong> / 採点 <strong>{API_MAX_TOKENS_CHECK}</strong> トークン。
             DevTools の Console にも <code style={{ fontSize: 11 }}>[API Debug]</code> で出力されます。
           </p>
 

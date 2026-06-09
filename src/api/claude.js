@@ -4,10 +4,12 @@ import { normalizePart } from '../utils/parts.js';
 
 const ENDPOINT = 'https://api.anthropic.com/v1/messages';
 const MODEL = 'claude-haiku-4-5-20251001';
-const MAX_TOKENS = 4096;
+const MAX_TOKENS_CHECK = 4096;
+const MAX_TOKENS_GENERATE = 8192;
 
-/** Current max_tokens ceiling (for debug UI). */
-export const API_MAX_TOKENS = MAX_TOKENS;
+/** Current max_tokens ceilings (for debug UI). */
+export const API_MAX_TOKENS_CHECK = MAX_TOKENS_CHECK;
+export const API_MAX_TOKENS_GENERATE = MAX_TOKENS_GENERATE;
 
 /** Number of exercises generated and shown per session. */
 export const EXERCISES_PER_SET = 7;
@@ -92,7 +94,7 @@ function parseJsonArray(text) {
 
 // ── Core fetch wrapper ───────────────────────────────────────────────────────
 
-async function callClaude(apiKey, system, userMessage, { prefill, debug } = {}) {
+async function callClaude(apiKey, system, userMessage, { prefill, debug, maxTokens = MAX_TOKENS_CHECK } = {}) {
   const messages = [{ role: 'user', content: userMessage }];
   if (prefill) {
     messages.push({ role: 'assistant', content: prefill });
@@ -110,7 +112,7 @@ async function callClaude(apiKey, system, userMessage, { prefill, debug } = {}) 
     },
     body: JSON.stringify({
       model: MODEL,
-      max_tokens: MAX_TOKENS,
+      max_tokens: maxTokens,
       system,
       messages,
     }),
@@ -132,7 +134,7 @@ async function callClaude(apiKey, system, userMessage, { prefill, debug } = {}) 
       input_tokens: data.usage?.input_tokens ?? null,
       output_tokens: data.usage?.output_tokens ?? null,
       stop_reason: data.stop_reason ?? null,
-      max_tokens: MAX_TOKENS,
+      max_tokens: maxTokens,
       response_chars: fullText.length,
     });
   }
@@ -163,6 +165,7 @@ export async function generateExercises(apiKey, stepInfo, n = EXERCISES_PER_SET,
   const { system, user } = buildGeneratePrompt(stepInfo, n);
   const raw = await callClaude(apiKey, system, user, {
     prefill: '[',
+    maxTokens: MAX_TOKENS_GENERATE,
     debug: { operation: 'generate', step: step ?? null },
   });
   const exercises = parseJsonArray(raw);

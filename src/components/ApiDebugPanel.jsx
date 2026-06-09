@@ -73,7 +73,7 @@ export default function ApiDebugPanel({ open, onToggle }) {
       {open && (
         <div style={{ maxHeight: '42vh', overflow: 'auto', padding: '12px 16px 16px' }}>
           <p style={{ fontSize: 11.5, color: C.t2, margin: '0 0 10px', lineHeight: 1.5 }}>
-            「7問を生成」「答え合わせ」のたびに1行追加されます。
+            「問題を作成する」「答え合わせ」のたびに1行追加されます。
             <strong style={{ color: C.t1 }}> output_tokens</strong> が実際の出力量、
             <strong style={{ color: C.t1 }}> stop_reason</strong> が終了理由です。
             現在の上限は 問題生成 <strong>{API_MAX_TOKENS_GENERATE}</strong> / 採点 <strong>{API_MAX_TOKENS_CHECK}</strong> トークン。

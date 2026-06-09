@@ -100,7 +100,7 @@ export default function App() {
       <div style={{ maxWidth: 620, margin: '0 auto' }}>
 
         {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
           <h1 style={{ fontSize: 19, fontWeight: 700, margin: 0 }}>英文構造トレーナー</h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <button type="button" onClick={() => setGuideOpen(true)} style={{
@@ -114,23 +114,24 @@ export default function App() {
             </button>
           </div>
         </div>
-        <p style={{ fontSize: 12.5, color: C.t2, margin: '0 0 14px' }}>{EXERCISES_PER_SET}問を英訳 → まとめて答え合わせ（Claude API による採点）</p>
 
         {/* Step tabs */}
         <StepTabs currentStep={step} onSwitch={switchStep} />
 
-        {/* Step desc + Generate button */}
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 16 }}>
-          <div style={{ flex: 1, background: C.card, border: `1px solid ${C.line}`, borderRadius: 10, padding: '8px 12px' }}>
+        {/* Step desc + Create button */}
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 10, padding: '8px 12px', marginBottom: 10 }}>
             <span style={{ fontSize: 12, color: C.t2 }}>
               <span style={{ fontWeight: 700, color: C.t1 }}>{sd.sub}</span>：{sd.desc}
             </span>
           </div>
-          <button onClick={handleGenerate} disabled={isGenerating} style={{
-            padding: '9px 14px', borderRadius: 10, border: `1px solid ${C.line}`,
-            background: C.card, color: C.t1, fontSize: 12, fontWeight: 600, cursor: isGenerating ? 'not-allowed' : 'pointer',
-            whiteSpace: 'nowrap', opacity: isGenerating ? 0.6 : 1, fontFamily: 'inherit' }}>
-            {isGenerating ? '生成中…' : `${EXERCISES_PER_SET}問を生成`}
+          <button type="button" onClick={handleGenerate} disabled={isGenerating} style={{
+            width: '100%', padding: 14, borderRadius: 12, border: 'none',
+            background: C.ink, color: '#fff', fontSize: 15, fontWeight: 700,
+            cursor: isGenerating ? 'not-allowed' : 'pointer',
+            opacity: isGenerating ? 0.7 : 1, fontFamily: 'inherit',
+          }}>
+            {isGenerating ? '問題を作成中…' : '問題を作成する'}
           </button>
         </div>
 

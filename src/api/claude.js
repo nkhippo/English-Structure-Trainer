@@ -3,9 +3,7 @@ import { normalizePart } from '../utils/parts.js';
 
 const ENDPOINT = 'https://api.anthropic.com/v1/messages';
 const MODEL = 'claude-haiku-4-5-20251001';
-const MAX_TOKENS_CHECK = 4096;
-const MAX_TOKENS_GENERATE = 8192;
-const GENERATE_RETRIES = 2;
+const MAX_TOKENS = 4096;
 
 /** Number of exercises generated and shown per session. */
 export const EXERCISES_PER_SET = 7;
@@ -90,7 +88,7 @@ function parseJsonArray(text) {
 
 // ── Core fetch wrapper ───────────────────────────────────────────────────────
 
-async function callClaude(apiKey, system, userMessage, { maxTokens = MAX_TOKENS_CHECK, prefill } = {}) {
+async function callClaude(apiKey, system, userMessage, { prefill } = {}) {
   const messages = [{ role: 'user', content: userMessage }];
   if (prefill) {
     messages.push({ role: 'assistant', content: prefill });
@@ -108,7 +106,7 @@ async function callClaude(apiKey, system, userMessage, { maxTokens = MAX_TOKENS_
     },
     body: JSON.stringify({
       model: MODEL,
-      max_tokens: maxTokens,
+      max_tokens: MAX_TOKENS,
       system,
       messages,
     }),
@@ -145,26 +143,13 @@ function normalizeExercise(ex) {
  */
 export async function generateExercises(apiKey, stepInfo, n = EXERCISES_PER_SET) {
   const { system, user } = buildGeneratePrompt(stepInfo, n);
-  let lastError;
+  const raw = await callClaude(apiKey, system, user, { prefill: '[' });
+  const exercises = parseJsonArray(raw);
 
-  for (let attempt = 0; attempt < GENERATE_RETRIES; attempt++) {
-    try {
-      const raw = await callClaude(apiKey, system, user, {
-        maxTokens: MAX_TOKENS_GENERATE,
-        prefill: '[',
-      });
-      const exercises = parseJsonArray(raw);
-
-      if (!Array.isArray(exercises) || exercises.length === 0) {
-        throw new Error('生成結果が不正です');
-      }
-      return shuffleArray(exercises.map(normalizeExercise));
-    } catch (e) {
-      lastError = e;
-    }
+  if (!Array.isArray(exercises) || exercises.length === 0) {
+    throw new Error('生成結果が不正です');
   }
-
-  throw lastError;
+  return shuffleArray(exercises.map(normalizeExercise));
 }
 
 /**

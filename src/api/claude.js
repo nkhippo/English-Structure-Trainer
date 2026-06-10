@@ -1,4 +1,6 @@
 import { buildGeneratePrompt, buildCheckPrompt, shuffleArray } from '../prompts/index.js';
+import { buildPhraseGeneratePrompt } from '../prompts/phraseQuiz.js';
+import { getLevelConfig } from '../constants/framingExpressions.js';
 import { pushApiDebugLog } from './debugLog.js';
 import { normalizePart } from '../utils/parts.js';
 
@@ -13,6 +15,8 @@ export const API_MAX_TOKENS_GENERATE = MAX_TOKENS_GENERATE;
 
 /** Number of exercises generated and shown per session. */
 export const EXERCISES_PER_SET = 7;
+/** Phrase quiz: questions per API generation (sampled from level bank). */
+export const PHRASE_QUESTIONS_PER_SET = 7;
 /** Points awarded per question (total = EXERCISES_PER_SET × POINTS_PER_QUESTION). */
 export const POINTS_PER_QUESTION = 10;
 const API_KEY_STORAGE = 'est_api_key';
@@ -195,6 +199,61 @@ export async function checkAnswers(apiKey, pairs, { step } = {}) {
     throw new Error('採点結果の件数が一致しません');
   }
   return evaluations.map(normalizeEvaluation);
+}
+
+function normalizePhraseQuestion(q, targets) {
+  const target = targets.find(
+    (t) => t.expr.toLowerCase() === String(q.expr || '').trim().toLowerCase(),
+  );
+  if (!target) {
+    throw new Error(`生成結果に未知のフレーズが含まれています: ${q.expr}`);
+  }
+  if (!q.en || !String(q.en).includes('___')) {
+    throw new Error(`「${target.expr}」の英文に穴埋め（___）がありません`);
+  }
+  return {
+    expr: target.expr,
+    jp: String(q.jp || '').trim(),
+    en: String(q.en || '').trim(),
+    meaning: String(q.meaning || '').trim(),
+    confusables: Array.isArray(q.confusables)
+      ? q.confusables
+          .filter((c) => c?.phrase && c?.why)
+          .slice(0, 2)
+          .map((c) => ({ phrase: String(c.phrase).trim(), why: String(c.why).trim() }))
+      : [],
+    category: target.category,
+    cefr: target.cefr,
+  };
+}
+
+/**
+ * Generate phrase fill-in-blank questions for one level tab (single API call).
+ *
+ * @param {string} apiKey
+ * @param {string} levelId  'a12' | 'b1' | 'b2'
+ * @param {object[]} targets  Expressions to include (pre-randomized subset)
+ */
+export async function generatePhraseQuestions(apiKey, levelId, targets) {
+  const level = getLevelConfig(levelId);
+  const { system, user } = buildPhraseGeneratePrompt(targets, level.label);
+  const raw = await callClaude(apiKey, system, user, {
+    prefill: '[',
+    maxTokens: MAX_TOKENS_GENERATE,
+    debug: { operation: 'phrase_generate', step: `phrase-${levelId}` },
+  });
+  const questions = parseJsonArray(raw);
+
+  if (!Array.isArray(questions) || questions.length !== targets.length) {
+    throw new Error(`生成結果の件数が一致しません（期待: ${targets.length}）`);
+  }
+
+  const normalized = questions.map((q) => normalizePhraseQuestion(q, targets));
+  const exprSet = new Set(normalized.map((q) => q.expr.toLowerCase()));
+  if (exprSet.size !== targets.length) {
+    throw new Error('同じフレーズが重複して生成されました');
+  }
+  return shuffleArray(normalized);
 }
 
 function normalizeEvaluation(ev) {

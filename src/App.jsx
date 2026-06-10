@@ -131,7 +131,7 @@ export default function App() {
         <StepTabs currentStep={step} onSwitch={switchStep} />
 
         {isPhrase ? (
-          <PhraseBankQuiz />
+          <PhraseBankQuiz apiKey={apiKey} />
         ) : (
           <>
             {/* Step desc + Create button */}

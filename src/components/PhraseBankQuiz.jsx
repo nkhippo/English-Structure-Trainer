@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import {
   PHRASE_LEVELS,
-  CROSS_LEVEL_RATIO,
   getLevelConfig,
   getExpressionsForLevel,
 } from '../constants/framingExpressions.js';
@@ -11,22 +10,13 @@ const C = { card: '#FFFFFF', line: '#EAE8E1', t1: '#1C1B19', t2: '#6B6862', t3: 
 
 function FeedbackDetail({ question }) {
   return (
-    <div style={{ fontSize: 12, lineHeight: 1.7 }}>
-      <p style={{ margin: '0 0 8px' }}>{question.meaning}</p>
-      {question.confusables?.length > 0 && (
-        <div>
-          <p style={{ margin: '0 0 4px', fontWeight: 600, fontSize: 11, color: '#6b7280' }}>
-            間違えやすい表現
-          </p>
-          <ul style={{ margin: 0, paddingLeft: 18 }}>
-            {question.confusables.map(({ phrase, why }) => (
-              <li key={phrase} style={{ marginBottom: 4 }}>
-                <strong>{phrase}</strong> — {why}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+    <div style={{ fontSize: 12, lineHeight: 1.65, color: C.t2 }}>
+      <p style={{ margin: '0 0 6px' }}>{question.meaning}</p>
+      {question.confusables?.map(({ phrase, why }) => (
+        <p key={phrase} style={{ margin: '0 0 4px' }}>
+          <strong style={{ color: C.t1 }}>{phrase}</strong> — {why}
+        </p>
+      ))}
     </div>
   );
 }
@@ -38,18 +28,17 @@ export default function PhraseBankQuiz({ apiKey }) {
   const [selected, setSelected] = useState('');
   const [checked, setChecked] = useState(false);
   const [score, setScore] = useState(0);
+  const [answeredCount, setAnsweredCount] = useState(0);
   const [finished, setFinished] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState('');
 
-  const level = getLevelConfig(levelId);
   const bankSize = getExpressionsForLevel(levelId).length;
   const perSet = Math.min(PHRASE_QUESTIONS_PER_SET, bankSize);
   const q = pool[idx];
   const isCorrect = checked && q && selected.trim().toLowerCase() === q.expr.toLowerCase();
   const parts = q ? q.en.split('___') : [];
   const progress = pool.length ? Math.round((idx + (checked ? 1 : 0)) / pool.length * 100) : 0;
-  const blankLabel = checked ? q.expr : (selected || '＿＿＿');
 
   function resetQuiz() {
     setPool([]);
@@ -57,6 +46,7 @@ export default function PhraseBankQuiz({ apiKey }) {
     setSelected('');
     setChecked(false);
     setScore(0);
+    setAnsweredCount(0);
     setFinished(false);
     setError('');
   }
@@ -81,15 +71,12 @@ export default function PhraseBankQuiz({ apiKey }) {
     }
   }
 
-  function handleSelect(choice) {
-    if (checked) return;
+  function handleChoice(choice) {
+    if (checked || !q) return;
     setSelected(choice);
-  }
-
-  function handleCheck() {
-    if (checked || !q || !selected) return;
     setChecked(true);
-    if (selected.trim().toLowerCase() === q.expr.toLowerCase()) {
+    setAnsweredCount((n) => n + 1);
+    if (choice.trim().toLowerCase() === q.expr.toLowerCase()) {
       setScore((s) => s + 1);
     }
   }
@@ -105,29 +92,22 @@ export default function PhraseBankQuiz({ apiKey }) {
   }
 
   function choiceStyle(choice) {
-    const isSelected = selected === choice;
     if (!checked) {
-      return {
-        ...styles.choiceBtn,
-        border: isSelected ? `2px solid ${C.ink}` : `1px solid ${C.line}`,
-        background: isSelected ? '#F5F4F0' : C.card,
-        fontWeight: isSelected ? 600 : 500,
-      };
+      return { ...styles.choiceBtn, border: `1px solid ${C.line}`, background: C.card };
     }
     const isAnswer = choice.toLowerCase() === q.expr.toLowerCase();
     if (isAnswer) {
       return { ...styles.choiceBtn, border: '2px solid #22c55e', background: '#f0fdf4', color: '#15803d', fontWeight: 600 };
     }
-    if (isSelected && !isAnswer) {
+    if (choice === selected) {
       return { ...styles.choiceBtn, border: '2px solid #ef4444', background: '#fff1f2', color: '#b91c1c', fontWeight: 600 };
     }
-    return { ...styles.choiceBtn, opacity: 0.55 };
+    return { ...styles.choiceBtn, opacity: 0.5 };
   }
 
   return (
     <div style={{ maxWidth: 640, margin: '0 auto' }}>
 
-      {/* CEFR level tabs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginBottom: 12 }}>
         {PHRASE_LEVELS.map((lv) => {
           const active = levelId === lv.id;
@@ -144,103 +124,67 @@ export default function PhraseBankQuiz({ apiKey }) {
                 color: C.t1, textAlign: 'center',
               }}>
               <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 2 }}>{lv.label}</div>
-              <div style={{ fontSize: 10, color: C.t2, lineHeight: 1.3 }}>{count}語</div>
+              <div style={{ fontSize: 10, color: C.t2 }}>{count}語</div>
             </button>
           );
         })}
       </div>
 
-      {/* Level description + generate */}
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 10, padding: '8px 12px', marginBottom: 10 }}>
-          <span style={{ fontSize: 12, color: C.t2 }}>
-            <span style={{ fontWeight: 700, color: C.t1 }}>{level.subtitle}</span>：{level.description}
-            （3択・1回 {perSet} 問／約{Math.round(CROSS_LEVEL_RATIO * 100)}%はタブ外の正解）
-          </span>
-        </div>
-        <button
-          type="button"
-          onClick={handleGenerate}
-          disabled={isGenerating}
-          style={{
-            width: '100%', padding: 14, borderRadius: 12, border: 'none',
-            background: C.ink, color: '#fff', fontSize: 15, fontWeight: 700,
-            cursor: isGenerating ? 'not-allowed' : 'pointer',
-            opacity: isGenerating ? 0.7 : 1, fontFamily: 'inherit',
-          }}>
-          {isGenerating ? '問題を作成中…' : pool.length ? '新しいセットを作成する' : '問題を作成する'}
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={handleGenerate}
+        disabled={isGenerating}
+        style={{
+          width: '100%', padding: 14, borderRadius: 12, border: 'none', marginBottom: 14,
+          background: C.ink, color: '#fff', fontSize: 15, fontWeight: 700,
+          cursor: isGenerating ? 'not-allowed' : 'pointer',
+          opacity: isGenerating ? 0.7 : 1, fontFamily: 'inherit',
+        }}>
+        {isGenerating ? '問題を作成中…' : pool.length ? '新しいセット' : '問題を作成する'}
+      </button>
 
       {error && (
-        <div style={{ background: '#FEF0EF', border: '1px solid #FACACB', borderRadius: 10, padding: '10px 14px', marginBottom: 14 }}>
-          <p style={{ fontSize: 13, color: '#C0392B', margin: 0 }}>{error}</p>
-        </div>
+        <p style={{ fontSize: 13, color: '#C0392B', margin: '0 0 14px' }}>{error}</p>
       )}
 
-      {pool.length === 0 && !isGenerating && !error && (
-        <p style={{ fontSize: 13, color: C.t3, textAlign: 'center', margin: '24px 0' }}>
-          「問題を作成する」で {bankSize} 語のバンクから {perSet} 問を3択で出題します
-        </p>
-      )}
-
-      {/* Finished screen */}
       {finished && (
-        <div style={{ textAlign: 'center', padding: '32px 16px' }}>
-          <div style={{ fontSize: 56, fontWeight: 700, lineHeight: 1.1 }}>
-            {score}
-            <span style={{ fontSize: 24, fontWeight: 400, color: '#9ca3af' }}> / {pool.length}</span>
-          </div>
-          <div style={{ color: '#6b7280', marginTop: 6, marginBottom: 24, fontSize: 14 }}>
+        <div style={{ textAlign: 'center', padding: '32px 8px' }}>
+          <p style={{ fontSize: 48, fontWeight: 700, margin: '0 0 4px' }}>
+            {score}<span style={{ fontSize: 22, color: C.t3 }}> / {pool.length}</span>
+          </p>
+          <p style={{ color: C.t2, margin: '0 0 20px', fontSize: 14 }}>
             正答率 {Math.round(score / pool.length * 100)}%
-          </div>
+          </p>
           <button type="button" onClick={handleGenerate} disabled={isGenerating} style={styles.btnPrimary}>
-            {isGenerating ? '作成中…' : 'もう一度（ランダム）'}
+            {isGenerating ? '作成中…' : 'もう一度'}
           </button>
         </div>
       )}
 
-      {/* Active question */}
       {q && !finished && (
         <>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-            <span style={{ fontSize: 12, color: '#6b7280', minWidth: 52 }}>
-              {idx + 1} / {pool.length}
-            </span>
-            <div style={{ flex: 1, height: 3, background: '#e5e7eb', borderRadius: 2, overflow: 'hidden' }}>
-              <div style={{ height: '100%', background: '#111', borderRadius: 2, width: `${progress}%`, transition: 'width 0.3s' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, fontSize: 12, color: C.t2 }}>
+            <span>{idx + 1} / {pool.length}</span>
+            <div style={{ flex: 1, height: 3, background: '#e5e7eb', borderRadius: 2 }}>
+              <div style={{ height: '100%', background: C.ink, borderRadius: 2, width: `${progress}%`, transition: 'width 0.3s' }} />
             </div>
-            <span style={{ fontSize: 12, color: '#6b7280', minWidth: 32, textAlign: 'right' }}>
-              {score}点
-            </span>
+            {answeredCount > 0 && (
+              <span style={{ fontWeight: 600, color: C.t1 }}>正解 {score}</span>
+            )}
           </div>
 
           <div style={styles.card}>
-            <div style={styles.jpBox}>「{q.jp}」</div>
+            <p style={{ fontSize: 15, margin: '0 0 10px', lineHeight: 1.6 }}>「{q.jp}」</p>
+            <p style={{ fontSize: 14, margin: '0 0 14px', lineHeight: 1.7, color: C.t2 }}>
+              {parts[0]}<span style={{ color: C.t1, fontWeight: 600 }}> ___ </span>{parts[1]}
+            </p>
 
-            <div style={{ fontSize: 14, lineHeight: 1.9, marginBottom: 16 }}>
-              {parts[0] && <span>{parts[0]}</span>}
-              <span style={{
-                display: 'inline-block',
-                margin: '0 4px',
-                padding: '0 6px 2px',
-                borderBottom: `2px solid ${checked ? (isCorrect ? '#22c55e' : '#ef4444') : '#9ca3af'}`,
-                color: checked ? (isCorrect ? '#15803d' : '#b91c1c') : (selected ? C.t1 : C.t3),
-                fontWeight: selected || checked ? 600 : 400,
-                minWidth: 48,
-                textAlign: 'center',
-              }}>
-                {blankLabel}
-              </span>
-              {parts[1] && <span>{parts[1]}</span>}
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: checked ? 14 : 0 }}>
               {q.choices.map((choice) => (
                 <button
                   key={choice}
                   type="button"
-                  onClick={() => handleSelect(choice)}
+                  onClick={() => handleChoice(choice)}
                   disabled={checked}
                   style={choiceStyle(choice)}
                 >
@@ -249,21 +193,6 @@ export default function PhraseBankQuiz({ apiKey }) {
               ))}
             </div>
 
-            {!checked && (
-              <button
-                type="button"
-                onClick={handleCheck}
-                disabled={!selected}
-                style={{
-                  ...styles.btnPrimary,
-                  opacity: selected ? 1 : 0.45,
-                  cursor: selected ? 'pointer' : 'not-allowed',
-                }}
-              >
-                答え合わせ
-              </button>
-            )}
-
             {checked && (
               <>
                 <div style={{
@@ -271,21 +200,13 @@ export default function PhraseBankQuiz({ apiKey }) {
                   background: isCorrect ? '#f0fdf4' : '#fff1f2',
                   borderColor: isCorrect ? '#bbf7d0' : '#fecdd3',
                 }}>
-                  <div style={{ fontWeight: 600, marginBottom: 8 }}>
-                    {isCorrect
-                      ? '✓ 正解！'
-                      : <>✗ 不正解 — 正解：<strong style={{ background: '#f3f4f6', padding: '1px 8px', borderRadius: 4 }}>{q.expr}</strong></>
-                    }
-                  </div>
-                  {q.isCrossLevel && (
-                    <p style={{ fontSize: 11, color: '#6b7280', margin: '0 0 8px' }}>
-                      ※ この問はタブ外のフレーズが正解でした
-                    </p>
-                  )}
+                  <p style={{ fontWeight: 600, margin: '0 0 8px', color: C.t1 }}>
+                    {isCorrect ? '✓ 正解' : `✗ 正解は ${q.expr}`}
+                  </p>
                   <FeedbackDetail question={q} />
                 </div>
                 <button type="button" onClick={handleNext} style={styles.btnSecondary}>
-                  {idx + 1 < pool.length ? '次の問題 →' : '結果を見る →'}
+                  {idx + 1 < pool.length ? '次へ' : '結果'}
                 </button>
               </>
             )}
@@ -298,22 +219,14 @@ export default function PhraseBankQuiz({ apiKey }) {
 
 const styles = {
   card: {
-    background: '#fff',
-    border: '1px solid #e5e7eb',
-    borderRadius: 16,
-    padding: '20px 24px',
-  },
-  jpBox: {
-    background: '#f9fafb',
-    borderRadius: 12,
-    padding: '12px 16px',
-    fontSize: 15,
-    lineHeight: 1.7,
-    marginBottom: 18,
+    background: C.card,
+    border: `1px solid ${C.line}`,
+    borderRadius: 14,
+    padding: '16px 18px',
   },
   choiceBtn: {
     width: '100%',
-    padding: '12px 14px',
+    padding: '11px 14px',
     borderRadius: 10,
     fontSize: 14,
     fontFamily: 'inherit',
@@ -322,14 +235,12 @@ const styles = {
   },
   feedback: {
     border: '1px solid',
-    borderRadius: 12,
-    padding: '10px 14px',
-    fontSize: 13,
-    lineHeight: 1.6,
-    marginBottom: 12,
+    borderRadius: 10,
+    padding: '10px 12px',
+    marginBottom: 10,
   },
   btnPrimary: {
-    background: '#111',
+    background: C.ink,
     color: '#fff',
     border: 'none',
     borderRadius: 10,
@@ -341,8 +252,8 @@ const styles = {
   },
   btnSecondary: {
     background: 'transparent',
-    color: '#374151',
-    border: '1px solid #d1d5db',
+    color: C.t1,
+    border: `1px solid ${C.line}`,
     borderRadius: 10,
     padding: '8px 20px',
     fontSize: 13,

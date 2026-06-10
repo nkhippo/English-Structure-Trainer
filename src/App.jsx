@@ -8,6 +8,7 @@ import QuestionCard from './components/QuestionCard.jsx';
 import ApiDebugPanel from './components/ApiDebugPanel.jsx';
 import GuideModal from './components/GuideModal.jsx';
 import PhraseBankQuiz from './components/PhraseBankQuiz.jsx';
+import { APP_SCROLL_ID } from './hooks/usePinnedSectionHeader.js';
 
 const C = { page: '#FAF9F6', card: '#FFFFFF', line: '#EAE8E1', t1: '#1C1B19', t2: '#6B6862', t3: '#9A968D', ink: '#1C1B19' };
 
@@ -71,7 +72,7 @@ export default function App() {
       results.forEach((r, i) => { evalMap[i] = r; });
       setEvaluationsByStep((prev) => ({ ...prev, [step]: evalMap }));
       setRevealedByStep((prev) => ({ ...prev, [step]: true }));
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      document.getElementById(APP_SCROLL_ID)?.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (e) {
       setError(`採点エラー: ${e.message}`);
     } finally {
@@ -96,9 +97,18 @@ export default function App() {
   }
 
   return (
-    <div style={{ background: C.page, minHeight: '100vh', padding: `18px 16px ${debugOpen ? 280 : 48}px`,
-      fontFamily: "'Hiragino Sans','Hiragino Kaku Gothic ProN','Yu Gothic','Meiryo',system-ui,sans-serif",
-      color: C.t1 }}>
+    <div
+      id={APP_SCROLL_ID}
+      style={{
+        background: C.page,
+        height: '100%',
+        overflowY: 'auto',
+        WebkitOverflowScrolling: 'touch',
+        padding: `18px 16px ${debugOpen ? 280 : 48}px`,
+        fontFamily: "'Hiragino Sans','Hiragino Kaku Gothic ProN','Yu Gothic','Meiryo',system-ui,sans-serif",
+        color: C.t1,
+        boxSizing: 'border-box',
+      }}>
       <div style={{ maxWidth: 620, margin: '0 auto' }}>
 
         {/* Header */}

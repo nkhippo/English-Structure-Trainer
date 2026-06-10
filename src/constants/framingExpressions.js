@@ -123,12 +123,106 @@ export function categoryLabel(category) {
   return CATEGORY_LABELS[category] ?? category;
 }
 
-export function pickRandomExpressions(levelId, count) {
-  const bank = getExpressionsForLevel(levelId);
-  const copy = [...bank];
-  for (let i = copy.length - 1; i > 0; i--) {
+/** Per-question probability that the correct answer is outside the tab bank. */
+export const CROSS_LEVEL_RATIO = 0.2;
+
+function shuffleInPlace(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
+    [arr[i], arr[j]] = [arr[j], arr[i]];
   }
+  return arr;
+}
+
+function pickRandomFrom(pool, count, exclude = new Set()) {
+  const available = pool.filter((e) => !exclude.has(e.expr));
+  const copy = [...available];
+  shuffleInPlace(copy);
   return copy.slice(0, Math.min(count, copy.length));
+}
+
+export function pickRandomExpressions(levelId, count) {
+  return pickRandomFrom(getExpressionsForLevel(levelId), count);
+}
+
+export function getExpressionsOutsideLevel(levelId) {
+  const levelExprs = new Set(getExpressionsForLevel(levelId).map((e) => e.expr));
+  return FRAMING_EXPRESSIONS.filter((e) => !levelExprs.has(e.expr));
+}
+
+/**
+ * Plan a quiz session: ~20% of slots use expressions outside the tab bank.
+ */
+export function planPhraseSession(levelId, count) {
+  const levelBank = getExpressionsForLevel(levelId);
+  const outsideBank = getExpressionsOutsideLevel(levelId);
+  const used = new Set();
+  const targets = [];
+
+  for (let i = 0; i < count; i++) {
+    const wantCross = Math.random() < CROSS_LEVEL_RATIO && outsideBank.length > 0;
+    if (wantCross) {
+      const crossPicks = pickRandomFrom(outsideBank, 1, used);
+      if (crossPicks.length > 0) {
+        used.add(crossPicks[0].expr);
+        targets.push({ ...crossPicks[0], isCrossLevel: true });
+        continue;
+      }
+    }
+    const inPicks = pickRandomFrom(levelBank, 1, used);
+    const pool = inPicks.length > 0 ? inPicks : pickRandomFrom(levelBank, 1);
+    const picked = pool[0];
+    used.add(picked.expr);
+    targets.push({ ...picked, isCrossLevel: false });
+  }
+
+  return shuffleInPlace(targets);
+}
+
+/**
+ * Build 3 shuffled choices. Cross-level questions always include ≥1 tab-bank distractor.
+ */
+export function buildPhraseChoices(correctExpr, levelId) {
+  const levelExprs = getExpressionsForLevel(levelId).map((e) => e.expr);
+  const correct = correctExpr.trim();
+  const correctKey = correct.toLowerCase();
+  const isCross = !levelExprs.some((e) => e.toLowerCase() === correctKey);
+
+  const used = new Set([correctKey]);
+
+  if (!isCross) {
+    const inTab = getExpressionsForLevel(levelId).filter((e) => e.expr.toLowerCase() !== correctKey);
+    let distractors = pickRandomFrom(inTab, 2).map((e) => e.expr);
+    if (distractors.length < 2) {
+      const extra = pickRandomFrom(
+        getExpressionsOutsideLevel(levelId),
+        2 - distractors.length,
+        new Set([correct, ...distractors]),
+      ).map((e) => e.expr);
+      distractors = [...distractors, ...extra];
+    }
+    return shuffleInPlace([correct, ...distractors.slice(0, 2)]);
+  }
+
+  const tabPool = getExpressionsForLevel(levelId).filter((e) => e.expr.toLowerCase() !== correctKey);
+  const tabDistractor = pickRandomFrom(tabPool, 1)[0]?.expr;
+  if (!tabDistractor) {
+    const outside = pickRandomFrom(getExpressionsOutsideLevel(levelId), 2, used).map((e) => e.expr);
+    return shuffleInPlace([correct, ...outside.slice(0, 2)]);
+  }
+  used.add(tabDistractor.toLowerCase());
+
+  const tabSecond = tabPool.filter((e) => e.expr.toLowerCase() !== tabDistractor.toLowerCase());
+  let third = tabSecond.length > 0
+    ? pickRandomFrom(tabSecond, 1)[0]?.expr
+    : pickRandomFrom(
+      FRAMING_EXPRESSIONS.filter((e) => !used.has(e.expr.toLowerCase())),
+      1,
+    )[0]?.expr;
+
+  if (!third) {
+    third = pickRandomFrom(getExpressionsOutsideLevel(levelId), 1, used)[0]?.expr;
+  }
+
+  return shuffleInPlace([correct, tabDistractor, third].filter(Boolean));
 }

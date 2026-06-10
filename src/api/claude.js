@@ -1,6 +1,6 @@
 import { buildGeneratePrompt, buildCheckPrompt, shuffleArray } from '../prompts/index.js';
 import { buildPhraseGeneratePrompt } from '../prompts/phraseQuiz.js';
-import { getLevelConfig } from '../constants/framingExpressions.js';
+import { getLevelConfig, buildPhraseChoices, planPhraseSession } from '../constants/framingExpressions.js';
 import { pushApiDebugLog } from './debugLog.js';
 import { normalizePart } from '../utils/parts.js';
 
@@ -224,6 +224,7 @@ function normalizePhraseQuestion(q, targets) {
       : [],
     category: target.category,
     cefr: target.cefr,
+    isCrossLevel: Boolean(target.isCrossLevel),
   };
 }
 
@@ -253,7 +254,19 @@ export async function generatePhraseQuestions(apiKey, levelId, targets) {
   if (exprSet.size !== targets.length) {
     throw new Error('同じフレーズが重複して生成されました');
   }
-  return shuffleArray(normalized);
+  return shuffleArray(
+    normalized.map((q) => ({
+      ...q,
+      choices: buildPhraseChoices(q.expr, levelId),
+    })),
+  );
+}
+
+/**
+ * Plan targets for a phrase quiz session (~20% cross-level).
+ */
+export function planPhraseQuizTargets(levelId, count) {
+  return planPhraseSession(levelId, count);
 }
 
 function normalizeEvaluation(ev) {

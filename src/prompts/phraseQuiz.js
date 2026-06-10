@@ -21,8 +21,9 @@ export function buildPhraseGeneratePrompt(targets, levelLabel) {
 指定された英語フレーズについて、穴埋め練習問題を作成してください。
 必ず有効なJSONのみを返してください。マークダウンや説明文は一切含めないでください。`,
 
-    user: `CEFR ${levelLabel} 向けのフレーズ穴埋め問題を ${n} 問作成してください。
+    user: `CEFR ${levelLabel} 向けのフレーズ3択クイズ用の穴埋め問題を ${n} 問作成してください。
 以下の ${n} 個のフレーズを、それぞれちょうど1問ずつ使ってください（重複・省略・追加禁止）。
+一部はタブ外のレベルのフレーズが含まれる場合がありますが、expr はリストのとおりに使ってください。
 
 ${formatTargetList(targets)}
 

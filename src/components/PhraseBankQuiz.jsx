@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import {
   PHRASE_LEVELS,
+  CROSS_LEVEL_RATIO,
   getLevelConfig,
   getExpressionsForLevel,
-  pickRandomExpressions,
 } from '../constants/framingExpressions.js';
-import { generatePhraseQuestions, PHRASE_QUESTIONS_PER_SET } from '../api/claude.js';
+import { generatePhraseQuestions, planPhraseQuizTargets, PHRASE_QUESTIONS_PER_SET } from '../api/claude.js';
 
 const C = { card: '#FFFFFF', line: '#EAE8E1', t1: '#1C1B19', t2: '#6B6862', t3: '#9A968D', ink: '#1C1B19' };
 
@@ -35,7 +35,7 @@ export default function PhraseBankQuiz({ apiKey }) {
   const [levelId, setLevelId] = useState('a12');
   const [pool, setPool] = useState([]);
   const [idx, setIdx] = useState(0);
-  const [input, setInput] = useState('');
+  const [selected, setSelected] = useState('');
   const [checked, setChecked] = useState(false);
   const [score, setScore] = useState(0);
   const [finished, setFinished] = useState(false);
@@ -46,14 +46,15 @@ export default function PhraseBankQuiz({ apiKey }) {
   const bankSize = getExpressionsForLevel(levelId).length;
   const perSet = Math.min(PHRASE_QUESTIONS_PER_SET, bankSize);
   const q = pool[idx];
-  const isCorrect = checked && q && input.trim().toLowerCase() === q.expr.toLowerCase();
+  const isCorrect = checked && q && selected.trim().toLowerCase() === q.expr.toLowerCase();
   const parts = q ? q.en.split('___') : [];
   const progress = pool.length ? Math.round((idx + (checked ? 1 : 0)) / pool.length * 100) : 0;
+  const blankLabel = checked ? q.expr : (selected || '＿＿＿');
 
   function resetQuiz() {
     setPool([]);
     setIdx(0);
-    setInput('');
+    setSelected('');
     setChecked(false);
     setScore(0);
     setFinished(false);
@@ -70,7 +71,7 @@ export default function PhraseBankQuiz({ apiKey }) {
     setError('');
     resetQuiz();
     try {
-      const targets = pickRandomExpressions(levelId, perSet);
+      const targets = planPhraseQuizTargets(levelId, perSet);
       const generated = await generatePhraseQuestions(apiKey, levelId, targets);
       setPool(generated);
     } catch (e) {
@@ -80,10 +81,15 @@ export default function PhraseBankQuiz({ apiKey }) {
     }
   }
 
+  function handleSelect(choice) {
+    if (checked) return;
+    setSelected(choice);
+  }
+
   function handleCheck() {
-    if (checked || !q) return;
+    if (checked || !q || !selected) return;
     setChecked(true);
-    if (input.trim().toLowerCase() === q.expr.toLowerCase()) {
+    if (selected.trim().toLowerCase() === q.expr.toLowerCase()) {
       setScore((s) => s + 1);
     }
   }
@@ -93,12 +99,30 @@ export default function PhraseBankQuiz({ apiKey }) {
       setFinished(true);
     } else {
       setIdx((i) => i + 1);
-      setInput('');
+      setSelected('');
       setChecked(false);
     }
   }
 
-  const inputWidth = q ? Math.min(250, Math.max(100, q.expr.length * 11 + 24)) : 120;
+  function choiceStyle(choice) {
+    const isSelected = selected === choice;
+    if (!checked) {
+      return {
+        ...styles.choiceBtn,
+        border: isSelected ? `2px solid ${C.ink}` : `1px solid ${C.line}`,
+        background: isSelected ? '#F5F4F0' : C.card,
+        fontWeight: isSelected ? 600 : 500,
+      };
+    }
+    const isAnswer = choice.toLowerCase() === q.expr.toLowerCase();
+    if (isAnswer) {
+      return { ...styles.choiceBtn, border: '2px solid #22c55e', background: '#f0fdf4', color: '#15803d', fontWeight: 600 };
+    }
+    if (isSelected && !isAnswer) {
+      return { ...styles.choiceBtn, border: '2px solid #ef4444', background: '#fff1f2', color: '#b91c1c', fontWeight: 600 };
+    }
+    return { ...styles.choiceBtn, opacity: 0.55 };
+  }
 
   return (
     <div style={{ maxWidth: 640, margin: '0 auto' }}>
@@ -131,7 +155,7 @@ export default function PhraseBankQuiz({ apiKey }) {
         <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 10, padding: '8px 12px', marginBottom: 10 }}>
           <span style={{ fontSize: 12, color: C.t2 }}>
             <span style={{ fontWeight: 700, color: C.t1 }}>{level.subtitle}</span>：{level.description}
-            （1回 {perSet} 問をランダム出題）
+            （3択・1回 {perSet} 問／約{Math.round(CROSS_LEVEL_RATIO * 100)}%はタブ外の正解）
           </span>
         </div>
         <button
@@ -156,7 +180,7 @@ export default function PhraseBankQuiz({ apiKey }) {
 
       {pool.length === 0 && !isGenerating && !error && (
         <p style={{ fontSize: 13, color: C.t3, textAlign: 'center', margin: '24px 0' }}>
-          「問題を作成する」で {bankSize} 語のバンクから {perSet} 問を出題します
+          「問題を作成する」で {bankSize} 語のバンクから {perSet} 問を3択で出題します
         </p>
       )}
 
@@ -194,32 +218,48 @@ export default function PhraseBankQuiz({ apiKey }) {
           <div style={styles.card}>
             <div style={styles.jpBox}>「{q.jp}」</div>
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 4, fontSize: 14, lineHeight: '2.4', marginBottom: 14 }}>
+            <div style={{ fontSize: 14, lineHeight: 1.9, marginBottom: 16 }}>
               {parts[0] && <span>{parts[0]}</span>}
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && !checked && handleCheck()}
-                disabled={checked}
-                autoFocus
-                style={{
-                  ...styles.blankInput,
-                  width: inputWidth,
-                  borderBottomColor: checked
-                    ? (isCorrect ? '#22c55e' : '#ef4444')
-                    : '#9ca3af',
-                  color: checked
-                    ? (isCorrect ? '#15803d' : '#b91c1c')
-                    : 'inherit',
-                  background: checked && isCorrect ? '#f0fdf4' : 'transparent',
-                }}
-              />
+              <span style={{
+                display: 'inline-block',
+                margin: '0 4px',
+                padding: '0 6px 2px',
+                borderBottom: `2px solid ${checked ? (isCorrect ? '#22c55e' : '#ef4444') : '#9ca3af'}`,
+                color: checked ? (isCorrect ? '#15803d' : '#b91c1c') : (selected ? C.t1 : C.t3),
+                fontWeight: selected || checked ? 600 : 400,
+                minWidth: 48,
+                textAlign: 'center',
+              }}>
+                {blankLabel}
+              </span>
               {parts[1] && <span>{parts[1]}</span>}
             </div>
 
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
+              {q.choices.map((choice) => (
+                <button
+                  key={choice}
+                  type="button"
+                  onClick={() => handleSelect(choice)}
+                  disabled={checked}
+                  style={choiceStyle(choice)}
+                >
+                  {choice}
+                </button>
+              ))}
+            </div>
+
             {!checked && (
-              <button type="button" onClick={handleCheck} style={styles.btnPrimary}>
+              <button
+                type="button"
+                onClick={handleCheck}
+                disabled={!selected}
+                style={{
+                  ...styles.btnPrimary,
+                  opacity: selected ? 1 : 0.45,
+                  cursor: selected ? 'pointer' : 'not-allowed',
+                }}
+              >
                 答え合わせ
               </button>
             )}
@@ -237,6 +277,11 @@ export default function PhraseBankQuiz({ apiKey }) {
                       : <>✗ 不正解 — 正解：<strong style={{ background: '#f3f4f6', padding: '1px 8px', borderRadius: 4 }}>{q.expr}</strong></>
                     }
                   </div>
+                  {q.isCrossLevel && (
+                    <p style={{ fontSize: 11, color: '#6b7280', margin: '0 0 8px' }}>
+                      ※ この問はタブ外のフレーズが正解でした
+                    </p>
+                  )}
                   <FeedbackDetail question={q} />
                 </div>
                 <button type="button" onClick={handleNext} style={styles.btnSecondary}>
@@ -266,15 +311,14 @@ const styles = {
     lineHeight: 1.7,
     marginBottom: 18,
   },
-  blankInput: {
-    border: 'none',
-    borderBottom: '2px solid',
-    outline: 'none',
+  choiceBtn: {
+    width: '100%',
+    padding: '12px 14px',
+    borderRadius: 10,
     fontSize: 14,
     fontFamily: 'inherit',
-    textAlign: 'center',
-    padding: '0 6px 2px',
-    cursor: 'text',
+    textAlign: 'left',
+    cursor: 'pointer',
   },
   feedback: {
     border: '1px solid',

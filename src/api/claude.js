@@ -260,13 +260,22 @@ export async function generatePhraseQuestions(apiKey, levelId, targets) {
     throw new Error('同じフレーズが重複して生成されました');
   }
   return shuffleArray(
-    normalized.map((q) => ({
-      ...q,
-      choices: buildPhraseChoices(q.expr, levelId, {
-        apiDistractors: q.distractors?.length ? q.distractors : q.confusables?.map((c) => c.phrase),
+    normalized.map((q) => {
+      const choices = buildPhraseChoices(q.expr, levelId, {
+        apiDistractors: q.distractors ?? [],
+        confusables: q.confusables ?? [],
         isCrossLevel: q.isCrossLevel,
-      }),
-    })),
+      });
+      const wrongChoices = choices.filter((c) => c.toLowerCase() !== q.expr.toLowerCase());
+      const confusablesByPhrase = new Map(
+        (q.confusables ?? []).map((c) => [c.phrase.toLowerCase(), c]),
+      );
+      const alignedConfusables = wrongChoices.map((phrase) => {
+        const existing = confusablesByPhrase.get(phrase.toLowerCase());
+        return existing ?? { phrase, why: 'この文の文脈では意味が合いません。' };
+      });
+      return { ...q, choices, confusables: alignedConfusables };
+    }),
   );
 }
 

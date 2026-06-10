@@ -46,10 +46,12 @@ ${formatTargetList(targets)}
 ]
 
 distractors（3択の誤答2つ）のルール — 最重要:
-- expr 自身は不可。フレーミング表現バンク内の別フレーズのみ
-- **意味・論理関係を履き違えやすい**ペアを選ぶ（原因 vs 譲歩、追加 vs 代わり、結果 vs 逆接 など）
-- **スペルや発音が似ているだけ**のペアは禁止。例: as a result / as a result of、in addition / in addition to、because / because of のような「語形が近いだけ」の組み合わせは不可
-- distractors の2つは互いにも意味が近く、どちらも一見ありそうに感じること
+- expr 自身は不可
+- **confusables の phrase と distractors は必ず同じ2つ**（フィードバックで説明する語 = 選択肢に出す語）
+- **意味・論理関係を履き違えやすい**ペアを選ぶ。例: as for の誤答に about（話題の切り出しと混同）や instead of（代わりに）— 文法カテゴリが違う no longer や because of のような無関係語は禁止
+- バンク内フレーズに加え、学習者が混同しやすい **一般表現**（about, regarding, despite, since, but など）も distractors に使ってよい
+- **スペルや発音が似ているだけ**のペアは禁止。例: as a result / as a result of、in addition / in addition to
+- distractors の2つはどちらもこの文脈で一見ありそうに感じること
 - ※タブ外正解の問は、distractors の少なくとも1つをタブ内フレーズバンクから選ぶこと
 
 問題文（jp / en）のルール:

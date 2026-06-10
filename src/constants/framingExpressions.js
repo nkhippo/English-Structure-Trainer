@@ -179,50 +179,116 @@ export function planPhraseSession(levelId, count) {
   return shuffleInPlace(targets);
 }
 
+const EXPR_LOOKUP = new Map(FRAMING_EXPRESSIONS.map((e) => [e.expr.toLowerCase(), e]));
+
+/** Pairs that differ mainly in form, not semantics — unsuitable as MCQ distractors. */
+const FORM_SIMILAR_PAIRS = [
+  ['as a result', 'as a result of'],
+  ['in addition', 'in addition to'],
+  ['because', 'because of'],
+];
+
 /**
- * Build 3 shuffled choices. Cross-level questions always include ≥1 tab-bank distractor.
+ * True when two phrases are too similar in spelling/shape to be fair distractors.
  */
-export function buildPhraseChoices(correctExpr, levelId) {
-  const levelExprs = getExpressionsForLevel(levelId).map((e) => e.expr);
+export function isFormSimilarPhrase(a, b) {
+  const na = a.toLowerCase().trim();
+  const nb = b.toLowerCase().trim();
+  if (na === nb) return true;
+  if (na.includes(nb) || nb.includes(na)) return true;
+
+  for (const [x, y] of FORM_SIMILAR_PAIRS) {
+    if ((na === x && nb === y) || (na === y && nb === x)) return true;
+  }
+
+  const wa = na.split(/\s+/);
+  const wb = nb.split(/\s+/);
+  if (wa[0] === wb[0] && wa[0].length > 3 && wa.length <= 3 && wb.length <= 3) {
+    return true;
+  }
+
+  const setB = new Set(wb);
+  const overlap = wa.filter((w) => setB.has(w)).length;
+  const minLen = Math.min(wa.length, wb.length);
+  if (overlap >= minLen && minLen >= 2) return true;
+
+  return false;
+}
+
+function resolveBankExpr(raw) {
+  const key = String(raw || '').trim().toLowerCase();
+  return EXPR_LOOKUP.get(key)?.expr ?? null;
+}
+
+function pickSemanticDistractors(correctExpr, levelId, count, exclude = new Set()) {
+  const correctKey = correctExpr.toLowerCase();
+  const correctEntry = EXPR_LOOKUP.get(correctKey);
+  const used = new Set([...exclude, correctKey]);
+  const picked = [];
+
+  const pools = [
+    FRAMING_EXPRESSIONS.filter((e) => e.category === correctEntry?.category),
+    FRAMING_EXPRESSIONS,
+  ];
+
+  for (const pool of pools) {
+    for (const e of shuffleInPlace([...pool])) {
+      if (picked.length >= count) break;
+      const key = e.expr.toLowerCase();
+      if (used.has(key)) continue;
+      if (isFormSimilarPhrase(correctExpr, e.expr)) continue;
+      if (picked.some((p) => isFormSimilarPhrase(p, e.expr))) continue;
+      picked.push(e.expr);
+      used.add(key);
+    }
+    if (picked.length >= count) break;
+  }
+
+  return picked;
+}
+
+/**
+ * Build 3 shuffled choices using API semantic distractors with validated fallbacks.
+ */
+export function buildPhraseChoices(correctExpr, levelId, { apiDistractors = [], isCrossLevel = false } = {}) {
   const correct = correctExpr.trim();
   const correctKey = correct.toLowerCase();
-  const isCross = !levelExprs.some((e) => e.toLowerCase() === correctKey);
-
+  const levelBank = getExpressionsForLevel(levelId);
+  const levelKeys = new Set(levelBank.map((e) => e.expr.toLowerCase()));
   const used = new Set([correctKey]);
 
-  if (!isCross) {
-    const inTab = getExpressionsForLevel(levelId).filter((e) => e.expr.toLowerCase() !== correctKey);
-    let distractors = pickRandomFrom(inTab, 2).map((e) => e.expr);
-    if (distractors.length < 2) {
-      const extra = pickRandomFrom(
-        getExpressionsOutsideLevel(levelId),
-        2 - distractors.length,
-        new Set([correct, ...distractors]),
-      ).map((e) => e.expr);
-      distractors = [...distractors, ...extra];
+  let distractors = (apiDistractors || [])
+    .map(resolveBankExpr)
+    .filter(Boolean)
+    .filter((d) => d.toLowerCase() !== correctKey)
+    .filter((d) => !isFormSimilarPhrase(correct, d));
+
+  distractors = [...new Map(distractors.map((d) => [d.toLowerCase(), d])).values()];
+
+  if (isCrossLevel && !distractors.some((d) => levelKeys.has(d.toLowerCase()))) {
+    const tabPick = pickSemanticDistractors(correct, levelId, 1, used);
+    if (tabPick[0]) {
+      distractors.unshift(tabPick[0]);
+      used.add(tabPick[0].toLowerCase());
     }
-    return shuffleInPlace([correct, ...distractors.slice(0, 2)]);
   }
 
-  const tabPool = getExpressionsForLevel(levelId).filter((e) => e.expr.toLowerCase() !== correctKey);
-  const tabDistractor = pickRandomFrom(tabPool, 1)[0]?.expr;
-  if (!tabDistractor) {
-    const outside = pickRandomFrom(getExpressionsOutsideLevel(levelId), 2, used).map((e) => e.expr);
-    return shuffleInPlace([correct, ...outside.slice(0, 2)]);
-  }
-  used.add(tabDistractor.toLowerCase());
+  distractors.forEach((d) => used.add(d.toLowerCase()));
 
-  const tabSecond = tabPool.filter((e) => e.expr.toLowerCase() !== tabDistractor.toLowerCase());
-  let third = tabSecond.length > 0
-    ? pickRandomFrom(tabSecond, 1)[0]?.expr
-    : pickRandomFrom(
+  if (distractors.length < 2) {
+    const need = 2 - distractors.length;
+    const fallback = pickSemanticDistractors(correct, levelId, need, used);
+    distractors = [...distractors, ...fallback];
+  }
+
+  distractors = distractors.slice(0, 2);
+  if (distractors.length < 2) {
+    const extra = pickRandomFrom(
       FRAMING_EXPRESSIONS.filter((e) => !used.has(e.expr.toLowerCase())),
-      1,
-    )[0]?.expr;
-
-  if (!third) {
-    third = pickRandomFrom(getExpressionsOutsideLevel(levelId), 1, used)[0]?.expr;
+      2 - distractors.length,
+    ).map((e) => e.expr);
+    distractors = [...distractors, ...extra];
   }
 
-  return shuffleInPlace([correct, tabDistractor, third].filter(Boolean));
+  return shuffleInPlace([correct, ...distractors.slice(0, 2)]);
 }

@@ -211,11 +211,16 @@ function normalizePhraseQuestion(q, targets) {
   if (!q.en || !String(q.en).includes('___')) {
     throw new Error(`「${target.expr}」の英文に穴埋め（___）がありません`);
   }
+  const distractors = Array.isArray(q.distractors)
+    ? q.distractors.map((d) => String(d).trim()).filter(Boolean).slice(0, 2)
+    : [];
+
   return {
     expr: target.expr,
     jp: String(q.jp || '').trim(),
     en: String(q.en || '').trim(),
     meaning: String(q.meaning || '').trim(),
+    distractors,
     confusables: Array.isArray(q.confusables)
       ? q.confusables
           .filter((c) => c?.phrase && c?.why)
@@ -237,7 +242,7 @@ function normalizePhraseQuestion(q, targets) {
  */
 export async function generatePhraseQuestions(apiKey, levelId, targets) {
   const level = getLevelConfig(levelId);
-  const { system, user } = buildPhraseGeneratePrompt(targets, level.label);
+  const { system, user } = buildPhraseGeneratePrompt(targets, level.label, levelId);
   const raw = await callClaude(apiKey, system, user, {
     prefill: '[',
     maxTokens: MAX_TOKENS_GENERATE,
@@ -257,7 +262,10 @@ export async function generatePhraseQuestions(apiKey, levelId, targets) {
   return shuffleArray(
     normalized.map((q) => ({
       ...q,
-      choices: buildPhraseChoices(q.expr, levelId),
+      choices: buildPhraseChoices(q.expr, levelId, {
+        apiDistractors: q.distractors?.length ? q.distractors : q.confusables?.map((c) => c.phrase),
+        isCrossLevel: q.isCrossLevel,
+      }),
     })),
   );
 }

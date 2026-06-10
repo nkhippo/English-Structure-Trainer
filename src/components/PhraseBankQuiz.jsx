@@ -149,7 +149,6 @@ export default function PhraseBankQuiz() {
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && !checked && handleCheck()}
             disabled={checked}
-            placeholder="入力..."
             autoFocus
             style={{
               ...styles.blankInput,

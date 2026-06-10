@@ -7,6 +7,7 @@ import StepTabs from './components/StepTabs.jsx';
 import QuestionCard from './components/QuestionCard.jsx';
 import ApiDebugPanel from './components/ApiDebugPanel.jsx';
 import GuideModal from './components/GuideModal.jsx';
+import PhraseBankQuiz from './components/PhraseBankQuiz.jsx';
 
 const C = { page: '#FAF9F6', card: '#FFFFFF', line: '#EAE8E1', t1: '#1C1B19', t2: '#6B6862', t3: '#9A968D', ink: '#1C1B19' };
 
@@ -23,11 +24,12 @@ export default function App() {
   const [debugOpen, setDebugOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
 
-  const sd = STEPS[step];
-  const exercises = exercisesByStep[step] || [];
-  const attempts = attemptsByStep[step] || {};
-  const evaluations = evaluationsByStep[step] || {};
-  const revealed = revealedByStep[step] || false;
+  const isPhrase = step === 'phrase';
+  const sd = isPhrase ? null : STEPS[step];
+  const exercises = isPhrase ? [] : (exercisesByStep[step] || []);
+  const attempts = isPhrase ? {} : (attemptsByStep[step] || {});
+  const evaluations = isPhrase ? {} : (evaluationsByStep[step] || {});
+  const revealed = isPhrase ? false : (revealedByStep[step] || false);
 
   // ── Step switch ─────────────────────────────────────────────────────────────
   const switchStep = (s) => {
@@ -118,90 +120,96 @@ export default function App() {
         {/* Step tabs */}
         <StepTabs currentStep={step} onSwitch={switchStep} />
 
-        {/* Step desc + Create button */}
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 10, padding: '8px 12px', marginBottom: 10 }}>
-            <span style={{ fontSize: 12, color: C.t2 }}>
-              <span style={{ fontWeight: 700, color: C.t1 }}>{sd.sub}</span>：{sd.desc}
-            </span>
-          </div>
-          <button type="button" onClick={handleGenerate} disabled={isGenerating} style={{
-            width: '100%', padding: 14, borderRadius: 12, border: 'none',
-            background: C.ink, color: '#fff', fontSize: 15, fontWeight: 700,
-            cursor: isGenerating ? 'not-allowed' : 'pointer',
-            opacity: isGenerating ? 0.7 : 1, fontFamily: 'inherit',
-          }}>
-            {isGenerating ? '問題を作成中…' : '問題を作成する'}
-          </button>
-        </div>
-
-        {/* Error */}
-        {error && (
-          <div style={{ background: '#FEF0EF', border: '1px solid #FACACB', borderRadius: 10, padding: '10px 14px', marginBottom: 14 }}>
-            <p style={{ fontSize: 13, color: '#C0392B', margin: 0 }}>{error}</p>
-          </div>
-        )}
-
-        {/* Score summary (top) */}
-        {revealed && Object.keys(evaluations).length > 0 && (
-          <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, padding: '14px 16px', marginBottom: 14 }}>
-            <p style={{ fontSize: 12, color: C.t3, margin: '0 0 4px', fontWeight: 600, textAlign: 'center' }}>合計スコア</p>
-            <p style={{ fontSize: 28, fontWeight: 700, margin: '0 0 14px', color: C.t1, lineHeight: 1.2, textAlign: 'center' }}>
-              {totalScore} <span style={{ fontSize: 16, fontWeight: 600, color: C.t3 }}>/ {maxScore}点</span>
-            </p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(72px, 1fr))', gap: 8 }}>
-              {exercises.map((_, i) => {
-                const ev = evaluations[i];
-                const correct = ev?.correct;
-                const scoreColor = correct ? ROLES.V.text : ROLES.Y.text;
-                const scoreBg = correct ? ROLES.V.bg : ROLES.Y.bg;
-                const scoreBorder = correct ? ROLES.V.border : ROLES.Y.border;
-                return (
-                  <div key={i} style={{
-                    textAlign: 'center', padding: '8px 6px', borderRadius: 10,
-                    background: scoreBg, border: `1px solid ${scoreBorder}`,
-                  }}>
-                    <p style={{ fontSize: 11, fontWeight: 700, color: C.t3, margin: '0 0 2px' }}>Q{i + 1}</p>
-                    <p style={{ fontSize: 15, fontWeight: 700, margin: 0, color: scoreColor }}>
-                      {ev?.score ?? 0}<span style={{ fontSize: 11, fontWeight: 600 }}>/{POINTS_PER_QUESTION}</span>
-                    </p>
-                  </div>
-                );
-              })}
+        {isPhrase ? (
+          <PhraseBankQuiz />
+        ) : (
+          <>
+            {/* Step desc + Create button */}
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 10, padding: '8px 12px', marginBottom: 10 }}>
+                <span style={{ fontSize: 12, color: C.t2 }}>
+                  <span style={{ fontWeight: 700, color: C.t1 }}>{sd.sub}</span>：{sd.desc}
+                </span>
+              </div>
+              <button type="button" onClick={handleGenerate} disabled={isGenerating} style={{
+                width: '100%', padding: 14, borderRadius: 12, border: 'none',
+                background: C.ink, color: '#fff', fontSize: 15, fontWeight: 700,
+                cursor: isGenerating ? 'not-allowed' : 'pointer',
+                opacity: isGenerating ? 0.7 : 1, fontFamily: 'inherit',
+              }}>
+                {isGenerating ? '問題を作成中…' : '問題を作成する'}
+              </button>
             </div>
-          </div>
+
+            {/* Error */}
+            {error && (
+              <div style={{ background: '#FEF0EF', border: '1px solid #FACACB', borderRadius: 10, padding: '10px 14px', marginBottom: 14 }}>
+                <p style={{ fontSize: 13, color: '#C0392B', margin: 0 }}>{error}</p>
+              </div>
+            )}
+
+            {/* Score summary (top) */}
+            {revealed && Object.keys(evaluations).length > 0 && (
+              <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, padding: '14px 16px', marginBottom: 14 }}>
+                <p style={{ fontSize: 12, color: C.t3, margin: '0 0 4px', fontWeight: 600, textAlign: 'center' }}>合計スコア</p>
+                <p style={{ fontSize: 28, fontWeight: 700, margin: '0 0 14px', color: C.t1, lineHeight: 1.2, textAlign: 'center' }}>
+                  {totalScore} <span style={{ fontSize: 16, fontWeight: 600, color: C.t3 }}>/ {maxScore}点</span>
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(72px, 1fr))', gap: 8 }}>
+                  {exercises.map((_, i) => {
+                    const ev = evaluations[i];
+                    const correct = ev?.correct;
+                    const scoreColor = correct ? ROLES.V.text : ROLES.Y.text;
+                    const scoreBg = correct ? ROLES.V.bg : ROLES.Y.bg;
+                    const scoreBorder = correct ? ROLES.V.border : ROLES.Y.border;
+                    return (
+                      <div key={i} style={{
+                        textAlign: 'center', padding: '8px 6px', borderRadius: 10,
+                        background: scoreBg, border: `1px solid ${scoreBorder}`,
+                      }}>
+                        <p style={{ fontSize: 11, fontWeight: 700, color: C.t3, margin: '0 0 2px' }}>Q{i + 1}</p>
+                        <p style={{ fontSize: 15, fontWeight: 700, margin: 0, color: scoreColor }}>
+                          {ev?.score ?? 0}<span style={{ fontSize: 11, fontWeight: 600 }}>/{POINTS_PER_QUESTION}</span>
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Question cards */}
+            {exercises.map((ex, i) => (
+              <QuestionCard
+                key={`${step}-${i}`}
+                index={i}
+                exercise={ex}
+                attempt={attempts[i] || ''}
+                evaluation={evaluations[i] || null}
+                revealed={revealed}
+                onAttemptChange={(v) => setAttemptsByStep((a) => ({ ...a, [step]: { ...a[step], [i]: v } }))}
+              />
+            ))}
+
+            {/* Bulk action */}
+            {exercises.length > 0 && !revealed ? (
+              <button onClick={handleCheck} disabled={isChecking} style={{
+                width: '100%', padding: 15, borderRadius: 14, border: 'none',
+                cursor: isChecking ? 'not-allowed' : 'pointer',
+                background: C.ink, color: '#fff', fontSize: 15, fontWeight: 700,
+                opacity: isChecking ? 0.7 : 1, fontFamily: 'inherit', marginTop: 4 }}>
+                {isChecking ? 'Claude が採点中…' : `まとめて答え合わせ（${exercises.length}問）`}
+              </button>
+            ) : exercises.length > 0 ? (
+              <button onClick={handleReset} style={{
+                width: '100%', padding: 13, borderRadius: 14, cursor: 'pointer',
+                border: `1px solid ${C.line}`, background: C.card, color: C.t1,
+                fontSize: 14, fontWeight: 600, fontFamily: 'inherit' }}>
+                やり直す
+              </button>
+            ) : null}
+          </>
         )}
-
-        {/* Question cards */}
-        {exercises.map((ex, i) => (
-          <QuestionCard
-            key={`${step}-${i}`}
-            index={i}
-            exercise={ex}
-            attempt={attempts[i] || ''}
-            evaluation={evaluations[i] || null}
-            revealed={revealed}
-            onAttemptChange={(v) => setAttemptsByStep((a) => ({ ...a, [step]: { ...a[step], [i]: v } }))}
-          />
-        ))}
-
-        {/* Bulk action */}
-        {exercises.length > 0 && !revealed ? (
-          <button onClick={handleCheck} disabled={isChecking} style={{
-            width: '100%', padding: 15, borderRadius: 14, border: 'none',
-            cursor: isChecking ? 'not-allowed' : 'pointer',
-            background: C.ink, color: '#fff', fontSize: 15, fontWeight: 700,
-            opacity: isChecking ? 0.7 : 1, fontFamily: 'inherit', marginTop: 4 }}>
-            {isChecking ? 'Claude が採点中…' : `まとめて答え合わせ（${exercises.length}問）`}
-          </button>
-        ) : exercises.length > 0 ? (
-          <button onClick={handleReset} style={{
-            width: '100%', padding: 13, borderRadius: 14, cursor: 'pointer',
-            border: `1px solid ${C.line}`, background: C.card, color: C.t1,
-            fontSize: 14, fontWeight: 600, fontFamily: 'inherit' }}>
-            やり直す
-          </button>
-        ) : null}
 
       </div>
 

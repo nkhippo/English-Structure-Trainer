@@ -130,6 +130,11 @@ export default function PhraseBankQuiz({ apiKey }) {
         })}
       </div>
 
+      <p style={{ fontSize: 12, color: C.t2, margin: '0 0 10px', lineHeight: 1.5 }}>
+        <span style={{ fontWeight: 700, color: C.t1 }}>{getLevelConfig(levelId).subtitle}</span>
+        ：{getLevelConfig(levelId).description}
+      </p>
+
       <button
         type="button"
         onClick={handleGenerate}

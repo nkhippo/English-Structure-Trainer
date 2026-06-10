@@ -20,10 +20,23 @@ export default function QuestionCard({ index, exercise, attempt, evaluation, rev
   const { jp, en } = exercise;
   const parts = (exercise.parts ?? []).filter((p) => p?.t);
 
+  const stickyHeader = revealed;
+
   return (
     <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: 20, marginBottom: 12 }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
+      {/* Header — sticks to viewport top while scrolling within this question (revealed only) */}
+      <div style={{
+        display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12,
+        ...(stickyHeader ? {
+          position: 'sticky',
+          top: 0,
+          zIndex: 5,
+          background: C.card,
+          margin: '-20px -20px 12px',
+          padding: '20px 20px 12px',
+          boxShadow: `0 1px 0 ${C.line}`,
+        } : {}),
+      }}>
         <span style={{ fontSize: 12, fontWeight: 700, color: C.t3, paddingTop: 3, flexShrink: 0 }}>Q{index + 1}</span>
         <p style={{ fontSize: 19, fontWeight: 600, margin: 0, lineHeight: 1.6, flex: 1, color: C.t1 }}>{jp}</p>
       </div>

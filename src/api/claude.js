@@ -286,6 +286,10 @@ function mergeEnrichedConfusables(aligned, enrichedList) {
   });
 }
 
+function stripJapaneseQuotes(text) {
+  return String(text || '').trim().replace(/^[「『"']+|[」』"']+$/g, '').trim();
+}
+
 function normalizePhraseQuestion(q, targets) {
   const target = targets.find(
     (t) => t.expr.toLowerCase() === String(q.expr || '').trim().toLowerCase(),
@@ -302,7 +306,7 @@ function normalizePhraseQuestion(q, targets) {
 
   return {
     expr: target.expr,
-    jp: String(q.jp || '').trim(),
+    jp: stripJapaneseQuotes(q.jp),
     en: String(q.en || '').trim(),
     meaning: String(q.meaning || '').trim(),
     correctFit: String(q.correctFit || '').trim(),

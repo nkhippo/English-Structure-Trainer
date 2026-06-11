@@ -105,7 +105,7 @@ export default function QuestionCard({ index, exercise, attempt, evaluation, rev
                     {evaluation.score} / {POINTS_PER_QUESTION}点
                   </span>
                 </div>
-                <p style={{ fontSize: 13, margin: '0', color: C.t1, lineHeight: 1.5 }}>{evaluation.feedback}</p>
+                <p style={{ fontSize: 13, margin: '0', color: C.t1, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{evaluation.feedback}</p>
               </div>
             )}
 

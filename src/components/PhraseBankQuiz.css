@@ -20,3 +20,67 @@
     text-align: center;
   }
 }
+
+.phrase-answer-panel {
+  margin-top: 14px;
+}
+
+.phrase-next-btn {
+  display: block;
+  width: 100%;
+  margin: 0 0 10px;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 10px;
+  background: #1c1b19;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.phrase-feedback {
+  border: 1px solid;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.phrase-verdict {
+  font-weight: 600;
+  margin: 0 0 8px;
+  color: #1c1b19;
+}
+
+@media (max-width: 767px) {
+  .phrase-feedback {
+    max-height: 42vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (min-width: 768px) {
+  .phrase-answer-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .phrase-next-btn {
+    align-self: flex-end;
+    width: auto;
+    min-width: 120px;
+    margin: 0;
+    padding: 8px 20px;
+    font-size: 13px;
+    font-weight: 500;
+    background: transparent;
+    color: #1c1b19;
+    border: 1px solid #eae8e1;
+  }
+
+  .phrase-answer-panel .phrase-feedback {
+    order: -1;
+  }
+}

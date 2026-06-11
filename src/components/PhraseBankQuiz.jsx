@@ -204,21 +204,27 @@ export default function PhraseBankQuiz({ apiKey }) {
             </div>
 
             {checked && (
-              <>
-                <div style={{
-                  ...styles.feedback,
-                  background: isCorrect ? '#f0fdf4' : '#fff1f2',
-                  borderColor: isCorrect ? '#bbf7d0' : '#fecdd3',
-                }}>
-                  <p style={{ fontWeight: 600, margin: '0 0 8px', color: C.t1 }}>
+              <div className="phrase-answer-panel">
+                <button
+                  type="button"
+                  className="phrase-next-btn"
+                  onClick={handleNext}
+                >
+                  {idx + 1 < pool.length ? '次へ' : '結果を見る'}
+                </button>
+                <div
+                  className="phrase-feedback"
+                  style={{
+                    background: isCorrect ? '#f0fdf4' : '#fff1f2',
+                    borderColor: isCorrect ? '#bbf7d0' : '#fecdd3',
+                  }}
+                >
+                  <p className="phrase-verdict">
                     {isCorrect ? '✓ 正解' : `✗ 正解は ${q.expr}`}
                   </p>
                   <FeedbackDetail question={q} />
                 </div>
-                <button type="button" onClick={handleNext} style={styles.btnSecondary}>
-                  {idx + 1 < pool.length ? '次へ' : '結果'}
-                </button>
-              </>
+              </div>
             )}
           </div>
         </>
@@ -241,27 +247,10 @@ const styles = {
     fontFamily: 'inherit',
     cursor: 'pointer',
   },
-  feedback: {
-    border: '1px solid',
-    borderRadius: 10,
-    padding: '10px 12px',
-    marginBottom: 10,
-  },
   btnPrimary: {
     background: C.ink,
     color: '#fff',
     border: 'none',
-    borderRadius: 10,
-    padding: '8px 20px',
-    fontSize: 13,
-    fontWeight: 500,
-    cursor: 'pointer',
-    fontFamily: 'inherit',
-  },
-  btnSecondary: {
-    background: 'transparent',
-    color: C.t1,
-    border: `1px solid ${C.line}`,
     borderRadius: 10,
     padding: '8px 20px',
     fontSize: 13,

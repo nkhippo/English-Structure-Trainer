@@ -16,7 +16,7 @@ export const API_MAX_TOKENS_GENERATE = MAX_TOKENS_GENERATE;
 /** Number of exercises generated and shown per session. */
 export const EXERCISES_PER_SET = 7;
 /** Phrase quiz: questions per API generation (sampled from level bank). */
-export const PHRASE_QUESTIONS_PER_SET = 7;
+export const PHRASE_QUESTIONS_PER_SET = 10;
 /** Points awarded per question (total = EXERCISES_PER_SET × POINTS_PER_QUESTION). */
 export const POINTS_PER_QUESTION = 10;
 const API_KEY_STORAGE = 'est_api_key';

@@ -71,6 +71,7 @@ export default function PhraseBankQuiz({ apiKey }) {
   const [finished, setFinished] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState('');
+  const [choicesOpen, setChoicesOpen] = useState(false);
 
   const bankSize = getExpressionsForLevel(levelId).length;
   const perSet = Math.min(PHRASE_QUESTIONS_PER_SET, bankSize);
@@ -88,6 +89,7 @@ export default function PhraseBankQuiz({ apiKey }) {
     setAnsweredCount(0);
     setFinished(false);
     setError('');
+    setChoicesOpen(false);
   }
 
   function switchLevel(id) {
@@ -127,6 +129,7 @@ export default function PhraseBankQuiz({ apiKey }) {
       setIdx((i) => i + 1);
       setSelected('');
       setChecked(false);
+      setChoicesOpen(false);
     }
   }
 
@@ -225,19 +228,34 @@ export default function PhraseBankQuiz({ apiKey }) {
               {parts[0]}<span style={{ color: C.t1, fontWeight: 600 }}> ___ </span>{parts[1]}
             </p>
 
-            <div className="phrase-choices" style={{ marginBottom: checked ? 14 : 0 }}>
-              {q.choices.map((choice) => (
+            <div className={`phrase-choices-accordion${checked ? ' phrase-choices-accordion--answered' : ''}`}>
+              {!checked && (
                 <button
-                  key={choice}
                   type="button"
-                  className="phrase-choice-btn"
-                  onClick={() => handleChoice(choice)}
-                  disabled={checked}
-                  style={choiceStyle(choice)}
+                  className="phrase-choices-toggle"
+                  onClick={() => setChoicesOpen((open) => !open)}
+                  aria-expanded={choicesOpen}
                 >
-                  {choice}
+                  <span>{choicesOpen ? '選択肢を隠す' : '選択肢を表示する'}</span>
+                  <span className="phrase-choices-chevron" aria-hidden>{choicesOpen ? '▲' : '▼'}</span>
                 </button>
-              ))}
+              )}
+              <div className={`phrase-choices-panel${choicesOpen || checked ? ' is-open' : ''}`}>
+                <div className="phrase-choices" style={{ marginBottom: checked ? 14 : 0 }}>
+                  {q.choices.map((choice) => (
+                    <button
+                      key={choice}
+                      type="button"
+                      className="phrase-choice-btn"
+                      onClick={() => handleChoice(choice)}
+                      disabled={checked || !choicesOpen}
+                      style={choiceStyle(choice)}
+                    >
+                      {choice}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
             {checked && (

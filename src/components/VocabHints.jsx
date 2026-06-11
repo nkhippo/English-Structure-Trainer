@@ -1,12 +1,20 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const C = { page: '#FAF9F6', line: '#EAE8E1', t1: '#1C1B19', t2: '#6B6862', t3: '#9A968D', accent: '#5B7FA5' };
 
 /**
- * @param {{ hints: { jp: string, en: string }[] }} props
+ * @param {{ hints: { jp: string, en: string }[], revealed?: boolean }} props
  */
-export default function VocabHints({ hints }) {
+export default function VocabHints({ hints, revealed = false }) {
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    setOpen(false);
+  }, [hints]);
+
+  useEffect(() => {
+    if (revealed) setOpen(false);
+  }, [revealed]);
 
   if (!hints?.length) return null;
 

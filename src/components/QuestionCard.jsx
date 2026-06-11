@@ -61,7 +61,7 @@ export default function QuestionCard({ index, exercise, attempt, evaluation, rev
       <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: 20 }}>
         <QuestionHeader index={index} jp={jp} style={inFlowHeaderStyle} />
 
-        <VocabHints hints={exercise.vocabHints} />
+        <VocabHints key={jp} hints={exercise.vocabHints} revealed={revealed} />
 
         {/* Textarea (hidden after answer check) */}
         {!revealed && (

@@ -191,7 +191,7 @@ export default function App() {
             {/* Question cards */}
             {exercises.map((ex, i) => (
               <QuestionCard
-                key={`${step}-${i}`}
+                key={`${step}-${i}-${ex.jp}`}
                 index={i}
                 exercise={ex}
                 attempt={attempts[i] || ''}

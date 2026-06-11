@@ -241,24 +241,26 @@ export default function PhraseBankQuiz({ apiKey }) {
             </div>
 
             {checked && (
-              <div className="phrase-answer-panel">
-                <button
-                  type="button"
-                  className="phrase-next-btn"
-                  onClick={handleNext}
-                >
-                  {idx + 1 < pool.length ? '次へ' : '結果を見る'}
-                </button>
-                <div
-                  className="phrase-feedback"
-                  style={{
-                    background: isCorrect ? '#f0fdf4' : '#fff1f2',
-                    borderColor: isCorrect ? '#bbf7d0' : '#fecdd3',
-                  }}
-                >
+              <div
+                className="phrase-feedback"
+                style={{
+                  background: isCorrect ? '#f0fdf4' : '#fff1f2',
+                  borderColor: isCorrect ? '#bbf7d0' : '#fecdd3',
+                }}
+              >
+                <div className="phrase-feedback-header">
                   <p className="phrase-verdict">
                     {isCorrect ? '✓ 正解' : `✗ 正解は ${q.expr}`}
                   </p>
+                  <button
+                    type="button"
+                    className="phrase-next-btn"
+                    onClick={handleNext}
+                  >
+                    {idx + 1 < pool.length ? '次へ' : '結果を見る'}
+                  </button>
+                </div>
+                <div className="phrase-feedback-body">
                   <FeedbackDetail question={q} selected={selected} isCorrect={isCorrect} />
                 </div>
               </div>

@@ -5,6 +5,7 @@ import {
   getExpressionsForLevel,
 } from '../constants/framingExpressions.js';
 import { generatePhraseQuestions, planPhraseQuizTargets, PHRASE_QUESTIONS_PER_SET } from '../api/claude.js';
+import './PhraseBankQuiz.css';
 
 const C = { card: '#FFFFFF', line: '#EAE8E1', t1: '#1C1B19', t2: '#6B6862', t3: '#9A968D', ink: '#1C1B19' };
 
@@ -187,11 +188,12 @@ export default function PhraseBankQuiz({ apiKey }) {
               {parts[0]}<span style={{ color: C.t1, fontWeight: 600 }}> ___ </span>{parts[1]}
             </p>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: checked ? 14 : 0 }}>
+            <div className="phrase-choices" style={{ marginBottom: checked ? 14 : 0 }}>
               {q.choices.map((choice) => (
                 <button
                   key={choice}
                   type="button"
+                  className="phrase-choice-btn"
                   onClick={() => handleChoice(choice)}
                   disabled={checked}
                   style={choiceStyle(choice)}
@@ -233,12 +235,10 @@ const styles = {
     padding: '16px 18px',
   },
   choiceBtn: {
-    width: '100%',
     padding: '11px 14px',
     borderRadius: 10,
     fontSize: 14,
     fontFamily: 'inherit',
-    textAlign: 'left',
     cursor: 'pointer',
   },
   feedback: {

@@ -5,7 +5,8 @@ import { pushApiDebugLog } from './debugLog.js';
 import { normalizePart } from '../utils/parts.js';
 
 const ENDPOINT = 'https://api.anthropic.com/v1/messages';
-const MODEL = 'claude-haiku-4-5-20251001';
+const MODEL_GENERATE = 'claude-haiku-4-5-20251001';
+const MODEL_CHECK = 'claude-sonnet-4-5-20250929';
 const MAX_TOKENS_CHECK = 4096;
 const MAX_TOKENS_GENERATE = 8192;
 
@@ -98,7 +99,7 @@ function parseJsonArray(text) {
 
 // ── Core fetch wrapper ───────────────────────────────────────────────────────
 
-async function callClaude(apiKey, system, userMessage, { prefill, debug, maxTokens = MAX_TOKENS_CHECK } = {}) {
+async function callClaude(apiKey, system, userMessage, { prefill, debug, maxTokens = MAX_TOKENS_CHECK, model = MODEL_GENERATE } = {}) {
   const messages = [{ role: 'user', content: userMessage }];
   if (prefill) {
     messages.push({ role: 'assistant', content: prefill });
@@ -115,7 +116,7 @@ async function callClaude(apiKey, system, userMessage, { prefill, debug, maxToke
       'anthropic-dangerous-direct-browser-access': 'true',
     },
     body: JSON.stringify({
-      model: MODEL,
+      model,
       max_tokens: maxTokens,
       system,
       messages,
@@ -191,6 +192,7 @@ export async function checkAnswers(apiKey, pairs, { step } = {}) {
   const { system, user } = buildCheckPrompt(pairs);
   const raw = await callClaude(apiKey, system, user, {
     prefill: '[',
+    model: MODEL_CHECK,
     debug: { operation: 'check', step: step ?? null },
   });
   const evaluations = parseJsonArray(raw);

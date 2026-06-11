@@ -7,7 +7,7 @@ import { normalizePart } from '../utils/parts.js';
 const ENDPOINT = 'https://api.anthropic.com/v1/messages';
 const MODEL_GENERATE = 'claude-haiku-4-5-20251001';
 const MODEL_CHECK = 'claude-sonnet-4-5-20250929';
-const MAX_TOKENS_CHECK = 4096;
+const MAX_TOKENS_CHECK = 6144;
 const MAX_TOKENS_GENERATE = 8192;
 
 /** Current max_tokens ceilings (for debug UI). */

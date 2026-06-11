@@ -9,6 +9,7 @@ const MODEL_GENERATE = 'claude-haiku-4-5-20251001';
 const MODEL_CHECK = 'claude-sonnet-4-5-20250929';
 const MAX_TOKENS_CHECK = 6144;
 const MAX_TOKENS_GENERATE = 8192;
+const CHECK_RETRIES = 2;
 
 /** Current max_tokens ceilings (for debug UI). */
 export const API_MAX_TOKENS_CHECK = MAX_TOKENS_CHECK;
@@ -82,11 +83,113 @@ function extractJsonArray(text) {
   throw new Error('JSON配列が途中で切れています（出力トークン上限の可能性があります）');
 }
 
+/** Escape literal newlines/tabs inside JSON string values. */
+function fixUnescapedNewlinesInJson(json) {
+  let result = '';
+  let inString = false;
+  let escaped = false;
+
+  for (let i = 0; i < json.length; i++) {
+    const ch = json[i];
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+        result += ch;
+        continue;
+      }
+      if (ch === '\\') {
+        escaped = true;
+        result += ch;
+        continue;
+      }
+      if (ch === '"') {
+        inString = false;
+        result += ch;
+        continue;
+      }
+      if (ch === '\n') {
+        result += '\\n';
+        continue;
+      }
+      if (ch === '\r') {
+        result += '\\r';
+        continue;
+      }
+      if (ch === '\t') {
+        result += '\\t';
+        continue;
+      }
+      result += ch;
+      continue;
+    }
+    if (ch === '"') inString = true;
+    result += ch;
+  }
+  return result;
+}
+
+/**
+ * Escape double quotes that appear inside JSON string values (common LLM mistake).
+ * A closing quote is recognized only when followed by , } ] or : (after whitespace).
+ */
+function fixUnescapedQuotesInJson(json) {
+  let result = '';
+  let inString = false;
+  let escaped = false;
+
+  for (let i = 0; i < json.length; i++) {
+    const ch = json[i];
+    if (!inString) {
+      result += ch;
+      if (ch === '"') inString = true;
+      continue;
+    }
+    if (escaped) {
+      escaped = false;
+      result += ch;
+      continue;
+    }
+    if (ch === '\\') {
+      escaped = true;
+      result += ch;
+      continue;
+    }
+    if (ch === '"') {
+      let j = i + 1;
+      while (j < json.length && /\s/.test(json[j])) j++;
+      const next = json[j];
+      if (next === ',' || next === '}' || next === ']' || next === ':' || next === undefined) {
+        result += ch;
+        inString = false;
+      } else {
+        result += '\\"';
+      }
+      continue;
+    }
+    result += ch;
+  }
+  return result;
+}
+
+function buildJsonCandidates(json) {
+  const repaired = [
+    json,
+    fixUnescapedNewlinesInJson(json),
+    fixUnescapedQuotesInJson(json),
+    fixUnescapedQuotesInJson(fixUnescapedNewlinesInJson(json)),
+  ];
+  const candidates = new Set();
+  for (const item of repaired) {
+    candidates.add(item);
+    candidates.add(item.replace(/,\s*([\]}])/g, '$1'));
+  }
+  return [...candidates];
+}
+
 function parseJsonArray(text) {
   const json = extractJsonArray(text);
-  const candidates = [json, json.replace(/,\s*([\]}])/g, '$1')];
   let lastError;
-  for (const candidate of candidates) {
+  for (const candidate of buildJsonCandidates(json)) {
     try {
       const parsed = JSON.parse(candidate);
       if (Array.isArray(parsed)) return parsed;
@@ -190,17 +293,27 @@ export async function generateExercises(apiKey, stepInfo, n = EXERCISES_PER_SET,
  */
 export async function checkAnswers(apiKey, pairs, { step } = {}) {
   const { system, user } = buildCheckPrompt(pairs);
-  const raw = await callClaude(apiKey, system, user, {
-    prefill: '[',
-    model: MODEL_CHECK,
-    debug: { operation: 'check', step: step ?? null },
-  });
-  const evaluations = parseJsonArray(raw);
+  let lastError;
 
-  if (!Array.isArray(evaluations) || evaluations.length !== pairs.length) {
-    throw new Error('採点結果の件数が一致しません');
+  for (let attempt = 0; attempt < CHECK_RETRIES; attempt++) {
+    try {
+      const raw = await callClaude(apiKey, system, user, {
+        prefill: '[',
+        model: MODEL_CHECK,
+        debug: { operation: 'check', step: step ?? null },
+      });
+      const evaluations = parseJsonArray(raw);
+
+      if (!Array.isArray(evaluations) || evaluations.length !== pairs.length) {
+        throw new Error('採点結果の件数が一致しません');
+      }
+      return evaluations.map(normalizeEvaluation);
+    } catch (e) {
+      lastError = e;
+    }
   }
-  return evaluations.map(normalizeEvaluation);
+
+  throw lastError;
 }
 
 const GENERIC_CONFUSABLE_WHY = 'この文の文脈では意味が合いません。';

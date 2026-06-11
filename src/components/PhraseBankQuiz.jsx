@@ -9,16 +9,53 @@ import './PhraseBankQuiz.css';
 
 const C = { card: '#FFFFFF', line: '#EAE8E1', t1: '#1C1B19', t2: '#6B6862', t3: '#9A968D', ink: '#1C1B19' };
 
-function FeedbackDetail({ question }) {
+function FeedbackDetail({ question, selected, isCorrect }) {
+  const selectedKey = selected.trim().toLowerCase();
+  const selectedConfusable = question.confusables?.find(
+    (c) => c.phrase.toLowerCase() === selectedKey,
+  );
+  const otherConfusables = (question.confusables ?? []).filter(
+    (c) => c.phrase.toLowerCase() !== selectedKey,
+  );
+
   return (
     <div style={{ fontSize: 12, lineHeight: 1.7, color: C.t2 }}>
-      <p style={{ margin: '0 0 10px' }}>{question.meaning}</p>
-      {question.confusables?.map(({ phrase, why }) => (
-        <div key={phrase} style={{ margin: '0 0 12px' }}>
-          <p style={{ margin: '0 0 4px', fontWeight: 600, color: C.t1 }}>{phrase}</p>
-          <p style={{ margin: 0 }}>{why}</p>
+      <div className="phrase-selected-note">
+        <p className="phrase-selected-label">
+          <strong>{selected}</strong>
+          {isCorrect ? ' — あなたの回答' : ' — あなたが選んだ解答'}
+        </p>
+        <p style={{ margin: 0 }}>
+          {isCorrect
+            ? (question.correctFit || question.meaning)
+            : (selectedConfusable?.why ?? 'この文脈では正解になりません。')}
+        </p>
+      </div>
+
+      {isCorrect && question.meaning && question.correctFit && (
+        <p style={{ margin: '0 0 10px' }}>{question.meaning}</p>
+      )}
+
+      {!isCorrect && (
+        <div className="phrase-correct-note">
+          <p className="phrase-selected-label">
+            <strong>{question.expr}</strong> — 正解の理由
+          </p>
+          <p style={{ margin: 0 }}>{question.correctFit || question.meaning}</p>
         </div>
-      ))}
+      )}
+
+      {(isCorrect ? question.confusables : otherConfusables)?.length > 0 && (
+        <div className="phrase-other-choices">
+          <p className="phrase-other-label">{isCorrect ? 'ほかの選択肢' : 'ほかの誤答'}</p>
+          {(isCorrect ? question.confusables : otherConfusables).map(({ phrase, why }) => (
+            <div key={phrase} style={{ margin: '0 0 8px' }}>
+              <p style={{ margin: '0 0 2px', fontWeight: 600, color: C.t1 }}>{phrase}</p>
+              <p style={{ margin: 0 }}>{why}</p>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -222,7 +259,7 @@ export default function PhraseBankQuiz({ apiKey }) {
                   <p className="phrase-verdict">
                     {isCorrect ? '✓ 正解' : `✗ 正解は ${q.expr}`}
                   </p>
-                  <FeedbackDetail question={q} />
+                  <FeedbackDetail question={q} selected={selected} isCorrect={isCorrect} />
                 </div>
               </div>
             )}

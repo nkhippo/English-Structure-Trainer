@@ -1,5 +1,5 @@
 import { buildGeneratePrompt, buildCheckPrompt, shuffleArray } from '../prompts/index.js';
-import { buildPhraseGeneratePrompt, buildPhraseConfusableEnrichPrompt } from '../prompts/phraseQuiz.js';
+import { buildPhraseGeneratePrompt, buildPhraseFeedbackEnrichPrompt } from '../prompts/phraseQuiz.js';
 import { getLevelConfig, buildPhraseChoices, planPhraseSession } from '../constants/framingExpressions.js';
 import { pushApiDebugLog } from './debugLog.js';
 import { normalizePart } from '../utils/parts.js';
@@ -206,9 +206,14 @@ const GENERIC_CONFUSABLE_WHY = 'この文の文脈では意味が合いません
 function isWeakConfusableWhy(why) {
   const text = String(why || '').trim();
   if (!text || text === GENERIC_CONFUSABLE_WHY) return true;
-  if (text.length < 80) return true;
-  if (/^(意味が合いません|文脈では|不適切)/.test(text) && text.length < 120) return true;
+  if (text.length < 40) return true;
+  if (/^(意味が合いません|文脈では|不適切)/.test(text) && text.length < 80) return true;
   return false;
+}
+
+function isWeakCorrectFit(text) {
+  const fit = String(text || '').trim();
+  return !fit || fit.length < 30;
 }
 
 function getWrongChoices(question) {
@@ -230,7 +235,7 @@ function alignConfusables(question, wrongChoices) {
   });
 }
 
-async function enrichPhraseConfusables(apiKey, questions, levelId) {
+async function enrichPhraseFeedback(apiKey, questions, levelId) {
   if (questions.length === 0) return new Map();
 
   const items = questions.map((q) => ({
@@ -241,16 +246,16 @@ async function enrichPhraseConfusables(apiKey, questions, levelId) {
     wrongPhrases: getWrongChoices(q),
   }));
 
-  const { system, user } = buildPhraseConfusableEnrichPrompt(items);
+  const { system, user } = buildPhraseFeedbackEnrichPrompt(items);
   const raw = await callClaude(apiKey, system, user, {
     prefill: '[',
     maxTokens: MAX_TOKENS_GENERATE,
-    debug: { operation: 'phrase_confusable_enrich', step: `phrase-${levelId}` },
+    debug: { operation: 'phrase_feedback_enrich', step: `phrase-${levelId}` },
   });
   const enriched = parseJsonArray(raw);
 
   if (!Array.isArray(enriched) || enriched.length !== questions.length) {
-    throw new Error('誤答解説の生成件数が一致しません');
+    throw new Error('フィードバック解説の生成件数が一致しません');
   }
 
   const byIndex = new Map();
@@ -260,7 +265,10 @@ async function enrichPhraseConfusables(apiKey, questions, levelId) {
           .filter((c) => c?.phrase && c?.why)
           .map((c) => ({ phrase: String(c.phrase).trim(), why: String(c.why).trim() }))
       : [];
-    byIndex.set(i, confusables);
+    byIndex.set(i, {
+      correctFit: String(entry?.correctFit || '').trim(),
+      confusables,
+    });
   });
   return byIndex;
 }
@@ -297,6 +305,7 @@ function normalizePhraseQuestion(q, targets) {
     jp: String(q.jp || '').trim(),
     en: String(q.en || '').trim(),
     meaning: String(q.meaning || '').trim(),
+    correctFit: String(q.correctFit || '').trim(),
     distractors,
     confusables: Array.isArray(q.confusables)
       ? q.confusables
@@ -347,10 +356,15 @@ export async function generatePhraseQuestions(apiKey, levelId, targets) {
     return { ...q, choices, confusables: alignedConfusables };
   });
 
-  const enrichedByIndex = await enrichPhraseConfusables(apiKey, withChoices, levelId);
+  const enrichedByIndex = await enrichPhraseFeedback(apiKey, withChoices, levelId);
   withChoices.forEach((q, index) => {
-    const enrichedList = enrichedByIndex.get(index) ?? [];
-    q.confusables = mergeEnrichedConfusables(q.confusables, enrichedList);
+    const enriched = enrichedByIndex.get(index) ?? { correctFit: '', confusables: [] };
+    if (!isWeakCorrectFit(enriched.correctFit)) {
+      q.correctFit = enriched.correctFit;
+    } else if (isWeakCorrectFit(q.correctFit)) {
+      q.correctFit = q.meaning;
+    }
+    q.confusables = mergeEnrichedConfusables(q.confusables, enriched.confusables);
   });
 
   return shuffleArray(withChoices);

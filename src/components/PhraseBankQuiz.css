@@ -52,6 +52,30 @@
   color: #1c1b19;
 }
 
+.phrase-selected-note {
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.phrase-selected-label {
+  margin: 0 0 4px;
+  font-weight: 600;
+  color: #1c1b19;
+}
+
+.phrase-correct-note {
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.phrase-other-label {
+  margin: 0 0 6px;
+  font-size: 11px;
+  color: #9a968d;
+}
+
 @media (max-width: 767px) {
   .phrase-feedback {
     max-height: 42vh;

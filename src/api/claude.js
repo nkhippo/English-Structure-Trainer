@@ -1,5 +1,5 @@
 import { buildGeneratePrompt, buildCheckPrompt, shuffleArray } from '../prompts/index.js';
-import { buildPhraseGeneratePrompt } from '../prompts/phraseQuiz.js';
+import { buildPhraseGeneratePrompt, buildPhraseConfusableEnrichPrompt } from '../prompts/phraseQuiz.js';
 import { getLevelConfig, buildPhraseChoices, planPhraseSession } from '../constants/framingExpressions.js';
 import { pushApiDebugLog } from './debugLog.js';
 import { normalizePart } from '../utils/parts.js';
@@ -201,6 +201,83 @@ export async function checkAnswers(apiKey, pairs, { step } = {}) {
   return evaluations.map(normalizeEvaluation);
 }
 
+const GENERIC_CONFUSABLE_WHY = 'この文の文脈では意味が合いません。';
+
+function isWeakConfusableWhy(why) {
+  const text = String(why || '').trim();
+  if (!text || text === GENERIC_CONFUSABLE_WHY) return true;
+  if (text.length < 80) return true;
+  if (/^(意味が合いません|文脈では|不適切)/.test(text) && text.length < 120) return true;
+  return false;
+}
+
+function getWrongChoices(question) {
+  return (question.choices ?? []).filter(
+    (c) => c.trim().toLowerCase() !== question.expr.trim().toLowerCase(),
+  );
+}
+
+function alignConfusables(question, wrongChoices) {
+  const confusablesByPhrase = new Map(
+    (question.confusables ?? []).map((c) => [c.phrase.toLowerCase(), c]),
+  );
+  return wrongChoices.map((phrase) => {
+    const existing = confusablesByPhrase.get(phrase.toLowerCase());
+    if (existing && !isWeakConfusableWhy(existing.why)) {
+      return { phrase, why: existing.why };
+    }
+    return { phrase, why: existing?.why ?? GENERIC_CONFUSABLE_WHY };
+  });
+}
+
+async function enrichPhraseConfusables(apiKey, questions, levelId) {
+  if (questions.length === 0) return new Map();
+
+  const items = questions.map((q) => ({
+    expr: q.expr,
+    jp: q.jp,
+    en: q.en,
+    meaning: q.meaning,
+    wrongPhrases: getWrongChoices(q),
+  }));
+
+  const { system, user } = buildPhraseConfusableEnrichPrompt(items);
+  const raw = await callClaude(apiKey, system, user, {
+    prefill: '[',
+    maxTokens: MAX_TOKENS_GENERATE,
+    debug: { operation: 'phrase_confusable_enrich', step: `phrase-${levelId}` },
+  });
+  const enriched = parseJsonArray(raw);
+
+  if (!Array.isArray(enriched) || enriched.length !== questions.length) {
+    throw new Error('誤答解説の生成件数が一致しません');
+  }
+
+  const byIndex = new Map();
+  enriched.forEach((entry, i) => {
+    const confusables = Array.isArray(entry?.confusables)
+      ? entry.confusables
+          .filter((c) => c?.phrase && c?.why)
+          .map((c) => ({ phrase: String(c.phrase).trim(), why: String(c.why).trim() }))
+      : [];
+    byIndex.set(i, confusables);
+  });
+  return byIndex;
+}
+
+function mergeEnrichedConfusables(aligned, enrichedList) {
+  const enrichedByPhrase = new Map(
+    enrichedList.map((c) => [c.phrase.toLowerCase(), c]),
+  );
+  return aligned.map((c) => {
+    const enriched = enrichedByPhrase.get(c.phrase.toLowerCase());
+    if (enriched && !isWeakConfusableWhy(enriched.why)) {
+      return { phrase: c.phrase, why: enriched.why };
+    }
+    return c;
+  });
+}
+
 function normalizePhraseQuestion(q, targets) {
   const target = targets.find(
     (t) => t.expr.toLowerCase() === String(q.expr || '').trim().toLowerCase(),
@@ -259,24 +336,24 @@ export async function generatePhraseQuestions(apiKey, levelId, targets) {
   if (exprSet.size !== targets.length) {
     throw new Error('同じフレーズが重複して生成されました');
   }
-  return shuffleArray(
-    normalized.map((q) => {
-      const choices = buildPhraseChoices(q.expr, levelId, {
-        apiDistractors: q.distractors ?? [],
-        confusables: q.confusables ?? [],
-        isCrossLevel: q.isCrossLevel,
-      });
-      const wrongChoices = choices.filter((c) => c.toLowerCase() !== q.expr.toLowerCase());
-      const confusablesByPhrase = new Map(
-        (q.confusables ?? []).map((c) => [c.phrase.toLowerCase(), c]),
-      );
-      const alignedConfusables = wrongChoices.map((phrase) => {
-        const existing = confusablesByPhrase.get(phrase.toLowerCase());
-        return existing ?? { phrase, why: 'この文の文脈では意味が合いません。' };
-      });
-      return { ...q, choices, confusables: alignedConfusables };
-    }),
-  );
+  const withChoices = normalized.map((q) => {
+    const choices = buildPhraseChoices(q.expr, levelId, {
+      apiDistractors: q.distractors ?? [],
+      confusables: q.confusables ?? [],
+      isCrossLevel: q.isCrossLevel,
+    });
+    const wrongChoices = getWrongChoices({ ...q, choices });
+    const alignedConfusables = alignConfusables(q, wrongChoices);
+    return { ...q, choices, confusables: alignedConfusables };
+  });
+
+  const enrichedByIndex = await enrichPhraseConfusables(apiKey, withChoices, levelId);
+  withChoices.forEach((q, index) => {
+    const enrichedList = enrichedByIndex.get(index) ?? [];
+    q.confusables = mergeEnrichedConfusables(q.confusables, enrichedList);
+  });
+
+  return shuffleArray(withChoices);
 }
 
 /**

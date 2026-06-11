@@ -361,6 +361,31 @@ export function buildPhraseChoices(correctExpr, levelId, { apiDistractors = [], 
   const correctKey = correct.toLowerCase();
   const levelKeys = new Set(getExpressionsForLevel(levelId).map((e) => e.expr.toLowerCase()));
   const used = new Set([correctKey]);
+  const explainedKeys = new Set(
+    confusables.filter((c) => c?.phrase && c?.why).map((c) => c.phrase.toLowerCase()),
+  );
+
+  const explainedDistractors = [];
+  for (const raw of [...confusables.map((c) => c.phrase), ...apiDistractors]) {
+    const d = normalizeChoicePhrase(raw, correct);
+    if (!d || used.has(d.toLowerCase())) continue;
+    if (!explainedKeys.has(d.toLowerCase())) continue;
+    if (!isCompatibleDistractor(correct, d)) continue;
+    explainedDistractors.push(d);
+    used.add(d.toLowerCase());
+    if (explainedDistractors.length >= 2) break;
+  }
+
+  if (explainedDistractors.length >= 2) {
+    let final = explainedDistractors.slice(0, 2);
+    if (isCrossLevel && !final.some((d) => levelKeys.has(d.toLowerCase()))) {
+      const tabPick = pickTabBankDistractor(correct, levelId, used);
+      if (tabPick) {
+        final = [tabPick, ...final.filter((d) => d.toLowerCase() !== tabPick.toLowerCase())].slice(0, 2);
+      }
+    }
+    return shuffleInPlace([correct, ...final]);
+  }
 
   const candidatePhrases = [
     ...confusables.map((c) => c.phrase),

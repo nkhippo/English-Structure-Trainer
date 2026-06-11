@@ -10,12 +10,13 @@ const C = { card: '#FFFFFF', line: '#EAE8E1', t1: '#1C1B19', t2: '#6B6862', t3: 
 
 function FeedbackDetail({ question }) {
   return (
-    <div style={{ fontSize: 12, lineHeight: 1.65, color: C.t2 }}>
-      <p style={{ margin: '0 0 6px' }}>{question.meaning}</p>
+    <div style={{ fontSize: 12, lineHeight: 1.7, color: C.t2 }}>
+      <p style={{ margin: '0 0 10px' }}>{question.meaning}</p>
       {question.confusables?.map(({ phrase, why }) => (
-        <p key={phrase} style={{ margin: '0 0 4px' }}>
-          <strong style={{ color: C.t1 }}>{phrase}</strong> — {why}
-        </p>
+        <div key={phrase} style={{ margin: '0 0 12px' }}>
+          <p style={{ margin: '0 0 4px', fontWeight: 600, color: C.t1 }}>{phrase}</p>
+          <p style={{ margin: 0 }}>{why}</p>
+        </div>
       ))}
     </div>
   );
@@ -135,18 +136,20 @@ export default function PhraseBankQuiz({ apiKey }) {
         ：{getLevelConfig(levelId).description}
       </p>
 
-      <button
-        type="button"
-        onClick={handleGenerate}
-        disabled={isGenerating}
-        style={{
-          width: '100%', padding: 14, borderRadius: 12, border: 'none', marginBottom: 14,
-          background: C.ink, color: '#fff', fontSize: 15, fontWeight: 700,
-          cursor: isGenerating ? 'not-allowed' : 'pointer',
-          opacity: isGenerating ? 0.7 : 1, fontFamily: 'inherit',
-        }}>
-        {isGenerating ? '問題を作成中…' : pool.length ? '新しいセット' : '問題を作成する'}
-      </button>
+      {!pool.length && (
+        <button
+          type="button"
+          onClick={handleGenerate}
+          disabled={isGenerating}
+          style={{
+            width: '100%', padding: 14, borderRadius: 12, border: 'none', marginBottom: 14,
+            background: C.ink, color: '#fff', fontSize: 15, fontWeight: 700,
+            cursor: isGenerating ? 'not-allowed' : 'pointer',
+            opacity: isGenerating ? 0.7 : 1, fontFamily: 'inherit',
+          }}>
+          {isGenerating ? '問題を作成中…' : '問題を作成する'}
+        </button>
+      )}
 
       {error && (
         <p style={{ fontSize: 13, color: '#C0392B', margin: '0 0 14px' }}>{error}</p>

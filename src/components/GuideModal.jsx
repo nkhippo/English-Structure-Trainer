@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import textbook from '../assets/textbook.md?raw';
@@ -36,7 +36,39 @@ function partIdFromHeading(children) {
   return null;
 }
 
+function getChapterTitleFromHeading(heading) {
+  const main = heading.querySelector('.guide-chapter-heading-main');
+  return (main?.textContent ?? heading.textContent).trim();
+}
+
+function findActiveChapterTitle(scrollRoot) {
+  const headings = scrollRoot.querySelectorAll('h2.guide-chapter-heading');
+  if (!headings.length) return null;
+
+  const rootTop = scrollRoot.getBoundingClientRect().top;
+  let current = null;
+
+  for (const heading of headings) {
+    if (heading.getBoundingClientRect().top <= rootTop + 1) {
+      current = getChapterTitleFromHeading(heading);
+    } else {
+      break;
+    }
+  }
+
+  return current;
+}
+
 export default function GuideModal({ open, onClose }) {
+  const bodyRef = useRef(null);
+  const [activeChapterTitle, setActiveChapterTitle] = useState(null);
+
+  const updateActiveChapter = useCallback(() => {
+    const body = bodyRef.current;
+    if (!body) return;
+    setActiveChapterTitle(findActiveChapterTitle(body));
+  }, []);
+
   const handleAnchorClick = useCallback((event, href) => {
     if (!href?.startsWith('#')) return;
 
@@ -44,8 +76,9 @@ export default function GuideModal({ open, onClose }) {
     const target = document.getElementById(href.slice(1));
     if (target) {
       target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      window.setTimeout(updateActiveChapter, 350);
     }
-  }, []);
+  }, [updateActiveChapter]);
 
   const markdownComponents = useMemo(
     () => ({
@@ -130,6 +163,26 @@ export default function GuideModal({ open, onClose }) {
     };
   }, [open, onClose]);
 
+  useEffect(() => {
+    if (!open) {
+      setActiveChapterTitle(null);
+      return undefined;
+    }
+
+    const body = bodyRef.current;
+    if (!body) return undefined;
+
+    const onScroll = () => updateActiveChapter();
+    body.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', updateActiveChapter);
+    updateActiveChapter();
+
+    return () => {
+      body.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', updateActiveChapter);
+    };
+  }, [open, updateActiveChapter]);
+
   if (!open) return null;
 
   return (
@@ -147,7 +200,12 @@ export default function GuideModal({ open, onClose }) {
             閉じる
           </button>
         </div>
-        <div className="guide-body">
+        {activeChapterTitle && (
+          <div className="guide-chapter-sticky" aria-live="polite">
+            {activeChapterTitle}
+          </div>
+        )}
+        <div className="guide-body" ref={bodyRef}>
           <div className="guide-markdown">
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
               {textbook}

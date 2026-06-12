@@ -416,6 +416,24 @@ function normalizePhraseBlank(en) {
   return after ? `${before} ___ ${after}` : `${before} ___`;
 }
 
+/**
+ * Conjunctive adverbs need a comma after the blank, not a period.
+ * e.g. "fluent. ___ . he" → "fluent. ___, he"
+ */
+function normalizeConjunctiveAdvPunctuation(en) {
+  let text = String(en || '').trim();
+  text = text.replace(/___\s*\.\s*([A-Za-z])/g, (_, ch) => `___, ${ch.toLowerCase()}`);
+  text = text.replace(/___\s+(?![,.;])([a-z])/g, '___, $1');
+  return text;
+}
+
+export function normalizePhraseEn(en, category) {
+  const withPunctuation = category === 'conjunctive_adv'
+    ? normalizeConjunctiveAdvPunctuation(en)
+    : String(en || '').trim();
+  return normalizePhraseBlank(withPunctuation);
+}
+
 function normalizePhraseQuestion(q, targets) {
   const target = targets.find(
     (t) => t.expr.toLowerCase() === String(q.expr || '').trim().toLowerCase(),
@@ -433,7 +451,7 @@ function normalizePhraseQuestion(q, targets) {
   return {
     expr: target.expr,
     jp: stripJapaneseQuotes(q.jp),
-    en: normalizePhraseBlank(q.en),
+    en: normalizePhraseEn(q.en, target.category),
     meaning: String(q.meaning || '').trim(),
     correctFit: String(q.correctFit || '').trim(),
     distractors,

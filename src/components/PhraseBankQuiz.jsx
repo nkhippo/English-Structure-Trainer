@@ -4,7 +4,12 @@ import {
   getLevelConfig,
   getExpressionsForLevel,
 } from '../constants/framingExpressions.js';
-import { generatePhraseQuestions, planPhraseQuizTargets, PHRASE_QUESTIONS_PER_SET } from '../api/claude.js';
+import {
+  generatePhraseQuestions,
+  planPhraseQuizTargets,
+  PHRASE_QUESTIONS_PER_SET,
+  normalizePhraseEn,
+} from '../api/claude.js';
 import './PhraseBankQuiz.css';
 
 const C = { card: '#FFFFFF', line: '#EAE8E1', t1: '#1C1B19', t2: '#6B6862', t3: '#9A968D', ink: '#1C1B19' };
@@ -89,7 +94,7 @@ export default function PhraseBankQuiz({ apiKey }) {
   const perSet = Math.min(PHRASE_QUESTIONS_PER_SET, bankSize);
   const q = pool[idx];
   const isCorrect = checked && q && selected.trim().toLowerCase() === q.expr.toLowerCase();
-  const blankParts = q ? splitPhraseBlank(q.en) : { before: '', after: '' };
+  const blankParts = q ? splitPhraseBlank(normalizePhraseEn(q.en, q.category)) : { before: '', after: '' };
   const progress = pool.length ? Math.round((idx + (checked ? 1 : 0)) / pool.length * 100) : 0;
 
   function resetQuiz() {

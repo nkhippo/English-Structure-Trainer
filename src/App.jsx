@@ -10,7 +10,9 @@ import GuideModal from './components/GuideModal.jsx';
 import PhraseBankQuiz from './components/PhraseBankQuiz.jsx';
 import StepInfoAccordion from './components/StepInfoAccordion.jsx';
 import SetCompletePanel from './components/SetCompletePanel.jsx';
+import CopyResultsButton from './components/CopyResultsButton.jsx';
 import { APP_SCROLL_ID } from './hooks/usePinnedSectionHeader.js';
+import { formatResultsMarkdown } from './utils/formatResultsMarkdown.js';
 
 const C = { page: '#FAF9F6', card: '#FFFFFF', line: '#EAE8E1', t1: '#1C1B19', t2: '#6B6862', t3: '#9A968D', ink: '#1C1B19' };
 
@@ -91,14 +93,6 @@ export default function App() {
     } finally {
       setIsChecking(false);
     }
-  };
-
-  // ── Reset ────────────────────────────────────────────────────────────────────
-  const handleReset = () => {
-    setAttemptsByStep((prev) => ({ ...prev, [step]: {} }));
-    setEvaluationsByStep((prev) => ({ ...prev, [step]: {} }));
-    setRevealedByStep((prev) => ({ ...prev, [step]: false }));
-    setError('');
   };
 
   const totalScore = Object.values(evaluations).reduce((sum, ev) => sum + (ev?.score ?? 0), 0);
@@ -232,13 +226,17 @@ export default function App() {
                 opacity: isChecking ? 0.7 : 1, fontFamily: 'inherit', marginTop: 4 }}>
                 {isChecking ? 'Claude が採点中…' : `まとめて答え合わせ（${exercises.length}問）`}
               </button>
-            ) : exercises.length > 0 ? (
-              <button onClick={handleReset} style={{
-                width: '100%', padding: 13, borderRadius: 14, cursor: 'pointer',
-                border: `1px solid ${C.line}`, background: C.card, color: C.t1,
-                fontSize: 14, fontWeight: 600, fontFamily: 'inherit' }}>
-                やり直す
-              </button>
+            ) : exercises.length > 0 && revealed ? (
+              <CopyResultsButton
+                getMarkdown={() => formatResultsMarkdown({
+                  step,
+                  stepLabel: sd.focus,
+                  stepSub: sd.sub,
+                  exercises,
+                  attempts,
+                  evaluations,
+                })}
+              />
             ) : null}
           </>
         )}

@@ -240,7 +240,7 @@ export default function PhraseBankQuiz({ apiKey }) {
           </div>
 
           <div style={styles.card}>
-            <p style={{ fontSize: 15, margin: '0 0 10px', lineHeight: 1.6 }}>「{q.jp}」</p>
+            <p style={{ fontSize: 15, margin: '0 0 10px', lineHeight: 1.6 }}>{q.jp}</p>
             <p style={{ fontSize: 14, margin: '0 0 14px', lineHeight: 1.7, color: C.t2 }}>
               {blankParts.before}<span style={{ color: C.t1, fontWeight: 600 }}>___</span>{blankParts.after}
             </p>

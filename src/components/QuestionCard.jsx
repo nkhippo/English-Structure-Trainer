@@ -69,10 +69,13 @@ export default function QuestionCard({ index, exercise, attempt, evaluation, rev
         {!revealed && (
           <textarea
             value={attempt}
-            onChange={(e) => onAttemptChange(e.target.value)}
+            onChange={(e) => onAttemptChange(e.target.value.replace(/[\r\n]+/g, ' '))}
+            onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
             placeholder="英訳を入力…"
             rows={2}
+            wrap="soft"
             style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical', fontSize: 15, lineHeight: 1.5,
+              whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'anywhere',
               padding: '10px 12px', borderRadius: 10, border: `1px solid ${C.line}`,
               color: C.t1, background: '#fff', fontFamily: 'inherit', outline: 'none' }} />
         )}

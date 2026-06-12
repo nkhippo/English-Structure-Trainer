@@ -1,4 +1,9 @@
 import { formatPartsForCheck } from '../utils/parts.js';
+import {
+  STEP7_OPERATION_TAGS,
+  STEP7_INVERSION_NEGATIVE_ADV,
+  getLastStep7TagSet,
+} from '../constants/step7.js';
 
 // Prompt templates for Claude API calls.
 // Both prompts instruct Claude to return JSON-only responses
@@ -68,9 +73,61 @@ function formatThemeAssignment(n) {
     .join('\n');
 }
 
-export function buildGeneratePrompt(stepInfo, n) {
+function buildStep3GenerateExtra() {
+  return `
+Step 3 固有の出題制約（必須）:
+- 7問のうち **少なくとも2問** は疑問文または否定文を含める
+- 疑問文：Yes/No疑問（助動詞前置）と wh疑問（空所を文頭へ）の両方をセット内でカバーする
+- 否定文：助動詞 + not（短縮形 don't / doesn't / didn't / hasn't 等）を含める
+- 日本語 jp には「〜ですか」「〜ません」「〜ない」など疑問・否定の手がかりを自然に含める
+- 時制・相・態・助動詞の問題も引き続きバランスよく含める`;
+}
+
+function buildStep7GenerateExtra(n, lastTagSet) {
+  const inversionList = STEP7_INVERSION_NEGATIVE_ADV.join(' / ');
+  const lastTagsNote = lastTagSet?.length
+    ? `直前セットの操作タグ構成: ${lastTagSet.join('、')} — **同じタグの組み合わせを繰り返さない**`
+    : '（直前セットなし — 2〜3種類の操作タグをバランスよく混在させる）';
+
+  return `
+Step 7 固有の出題制約（必須）:
+- 各問に operationTag を1つ付与（${STEP7_OPERATION_TAGS.join(' / ')} のいずれか）
+- 1セット（${n}問）で **2〜3種類の operationTag を混在** させる。同じタグが3問以上連続しないよう並べを工夫する
+- ${lastTagsNote}
+- **最低1問** は operationTag「倒置/強調」かつ、否定副詞句（${inversionList} 等）による倒置を含める
+- 全問に cefr ラベル（"A2"|"B1"|"B2"|"C1"）を付与。比較・仮定法の基本型は B1〜B2 中心、倒置・話法・省略は B2〜C1 中心
+- 各問に thread を付与（"糸1" または "糸2"）。nuance の末尾に「糸1（助動詞前置）の再利用」または「糸2（空所＋移動）の再利用」のどちらかを1行で必ず含める
+- 仮定法・話法など文が長くなりやすい操作は、日本語 jp を短く設計して文長上限を守る
+- 否定副詞句リストはフレーズバンク（CEFR別）と対応。倒置問題では文頭配置＋助動詞前置を模範解答に反映する
+
+返却形式への追加フィールド（Step 7 のみ必須）:
+  "operationTag": "比較|仮定法|疑問|倒置/強調|否定|話法|省略",
+  "cefr": "A2|B1|B2|C1",
+  "thread": "糸1|糸2"`;
+}
+
+function buildStep3CheckExtra() {
+  return `
+Step 3 採点の補足:
+- 疑問文・否定文の解答でも、助動詞の形・語順が正しければ意味が通れば高得点とする`;
+}
+
+function buildStep7CheckExtra() {
+  return `
+Step 7 採点の補足（必須）:
+- **構文の種類は問わず、正しい変形であれば正解とする**（例：it-cleft と what-cleft の両方、仮定法の別表現など）
+- 操作タグ（比較・仮定法・疑問・倒置/強調・否定・話法・省略）に関わらず、意味と文法が正しければ満点に近い評価とする
+- feedback で模範解答の妥当性を説明するとき、可能なら「糸1（助動詞前置）」または「糸2（空所＋移動）」のどちらの再利用かに1行触れる`;
+}
+
+export function buildGeneratePrompt(stepInfo, n, { step } = {}) {
   const seedExamples = formatSeedExamples(stepInfo.exercises);
   const themeAssignment = formatThemeAssignment(n);
+  const stepExtra = step === 3
+    ? buildStep3GenerateExtra()
+    : step === 7
+      ? buildStep7GenerateExtra(n, getLastStep7TagSet())
+      : '';
 
   return {
     system: `あなたは英語教育の専門家です。
@@ -209,7 +266,7 @@ nuance（必須）:
 - 難易度は日常的な文を使い、学習者が理解できるレベルに保つこと
 - 日本語の訳し方が1通りでない場合、模範解答のニュアンスが日本語に一致するよう jp を調整する。ただし不自然な日本語になる場合は en の方を jp に合わせて書き換える
 - ${n}問で扱う文法パターン（${stepInfo.focus}）もできるだけバラけさせ、似た構文の連続を避ける
-- JSON配列の並び順は問ごとにランダムにする（テーマ割り当ての順番と一致させない）`,
+- JSON配列の並び順は問ごとにランダムにする（テーマ割り当ての順番と一致させない）${stepExtra}`,
   };
 }
 
@@ -223,11 +280,16 @@ export { shuffleArray };
  * Evaluation shape:
  *   { score: number, correct: boolean, feedback: string, correction: string | null }
  */
-export function buildCheckPrompt(pairs) {
+export function buildCheckPrompt(pairs, { step } = {}) {
+  const stepExtra = step === 3
+    ? buildStep3CheckExtra()
+    : step === 7
+      ? buildStep7CheckExtra()
+      : '';
   const items = pairs
     .map(
       (p, i) =>
-        `[${i + 1}]\n日本語: ${p.jp}\n模範解答（100点）: ${p.en}${p.nuance ? `\n模範解答のポイント: ${p.nuance}` : ''}${formatPartsForCheck(p.parts)}\n解答: ${p.attempt || '（未入力）'}`
+        `[${i + 1}]\n日本語: ${p.jp}\n模範解答（100点）: ${p.en}${p.nuance ? `\n模範解答のポイント: ${p.nuance}` : ''}${p.operationTag ? `\n操作タグ: ${p.operationTag}` : ''}${p.thread ? `\n糸: ${p.thread}` : ''}${formatPartsForCheck(p.parts)}\n解答: ${p.attempt || '（未入力）'}`
     )
     .join('\n\n');
 
@@ -294,6 +356,6 @@ feedback 書式（可読性最優先）:
 - 大きな区切り（誤り指摘 / 補正後の意味 / 意図との対比 / 模範の理由）のあとは空行（\\n\\n）を入れる
 - 行が長くなっても構わない。途中で不自然な位置で改行しない
 - feedback は学習者が「何を直すか」と「なぜ模範解答が100点なのか」の両方がわかるよう具体的に
-- 模範解答と異なる別解を correction として提示しない（模範解答は常に入力の「模範解答（100点）」を使う）`,
+- 模範解答と異なる別解を correction として提示しない（模範解答は常に入力の「模範解答（100点）」を使う）${stepExtra}`,
   };
 }

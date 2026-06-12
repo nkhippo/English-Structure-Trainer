@@ -86,19 +86,19 @@ export const FRAMING_EXPRESSIONS = [
   { expr: 'by contrast', cefr: 'B2', category: 'conjunctive_adv', jpHint: 'それとは対照的に', note: '対比' },
   { expr: 'to sum up', cefr: 'B2', category: 'conjunctive_adv', jpHint: 'まとめると', note: '要約・締め' },
   // ── 否定副詞句 A2 ──
-  { expr: 'no longer', cefr: 'A2', category: 'negative_adv', jpHint: 'もはや〜ない', note: '動詞の直前に置く。文頭に置くと倒置が発生' },
+  { expr: 'no longer', cefr: 'A2', category: 'negative_adv', jpHint: 'もはや〜ない', note: '動詞の直前に置く。文頭に置くと倒置が発生（STEP 7・第27/28章）' },
   { expr: 'not yet', cefr: 'A2', category: 'negative_adv', jpHint: 'まだ〜ない', note: 'be動詞・助動詞の後ろに置く' },
   { expr: 'not at all', cefr: 'A2', category: 'negative_adv', jpHint: '全く〜ない', note: '強調否定。be動詞の後ろまたは文末' },
   { expr: 'not even', cefr: 'A2', category: 'negative_adv', jpHint: '〜さえない', note: '強調否定。強調したい語の直前' },
   // ── 否定副詞句 B1 ──
-  { expr: 'no more', cefr: 'B1', category: 'negative_adv', jpHint: 'それ以上〜ない / もはや〜ない', note: 'no longer と同義。文頭で倒置あり' },
+  { expr: 'no more', cefr: 'B1', category: 'negative_adv', jpHint: 'それ以上〜ない / もはや〜ない', note: 'no longer と同義。文頭で倒置あり（STEP 7・第27章）' },
   { expr: 'not always', cefr: 'B1', category: 'negative_adv', jpHint: '必ずしも〜ない', note: '部分否定。always / every を否定するときに使う' },
   { expr: 'not necessarily', cefr: 'B1', category: 'negative_adv', jpHint: '必ずしも〜ではない', note: '部分否定。「〜とは限らない」' },
   { expr: 'hardly ever', cefr: 'B1', category: 'negative_adv', jpHint: 'めったに〜ない', note: 'seldom と同義。動詞の直前に置く' },
-  { expr: 'never again', cefr: 'B1', category: 'negative_adv', jpHint: '二度と〜ない', note: '強調否定。文頭で倒置あり' },
+  { expr: 'never again', cefr: 'B1', category: 'negative_adv', jpHint: '二度と〜ない', note: '強調否定。文頭で倒置あり（STEP 7・第27章）' },
   // ── 否定副詞句 B2 ──
-  { expr: 'by no means', cefr: 'B2', category: 'negative_adv', jpHint: '決して〜ない', note: 'not at all のフォーマル版。文頭で倒置あり' },
-  { expr: 'in no way', cefr: 'B2', category: 'negative_adv', jpHint: '決して〜ない', note: 'by no means と同義。文頭で倒置あり' },
+  { expr: 'by no means', cefr: 'B2', category: 'negative_adv', jpHint: '決して〜ない', note: 'not at all のフォーマル版。文頭で倒置あり（STEP 7・第27/28章）' },
+  { expr: 'in no way', cefr: 'B2', category: 'negative_adv', jpHint: '決して〜ない', note: 'by no means と同義。文頭で倒置あり（STEP 7・第27章）' },
   { expr: 'not in the least', cefr: 'B2', category: 'negative_adv', jpHint: '少しも〜ない', note: 'not at all の強調形' },
   { expr: 'far from', cefr: 'B2', category: 'negative_adv', jpHint: '〜どころか', note: '後ろに名詞・形容詞・動名詞が来る' },
 ];

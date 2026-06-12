@@ -26,7 +26,7 @@ function splitPhraseBlank(en) {
   return { before: en.slice(0, idx).replace(/_+$/, ''), after: en.slice(idx + 3) };
 }
 
-function FeedbackDetail({ question, selected, isCorrect }) {
+function FeedbackDetail({ question, selected, isCorrect, onOpenStep7 }) {
   const selectedKey = selected.trim().toLowerCase();
   const selectedConfusable = question.confusables?.find(
     (c) => c.phrase.toLowerCase() === selectedKey,
@@ -73,11 +73,25 @@ function FeedbackDetail({ question, selected, isCorrect }) {
           ))}
         </div>
       )}
+
+      {question.category === 'negative_adv' && onOpenStep7 && (
+        <button
+          type="button"
+          onClick={onOpenStep7}
+          style={{
+            marginTop: 10, padding: 0, border: 'none', background: 'none',
+            fontSize: 11, fontWeight: 600, color: C.t2, cursor: 'pointer',
+            fontFamily: 'inherit', textDecoration: 'underline',
+          }}
+        >
+          STEP 7 で倒置の体系を学ぼう →
+        </button>
+      )}
     </div>
   );
 }
 
-export default function PhraseBankQuiz({ apiKey }) {
+export default function PhraseBankQuiz({ apiKey, onOpenStep7 }) {
   const [levelId, setLevelId] = useState('a12');
   const [pool, setPool] = useState([]);
   const [idx, setIdx] = useState(0);
@@ -296,7 +310,7 @@ export default function PhraseBankQuiz({ apiKey }) {
                   </button>
                 </div>
                 <div className="phrase-feedback-body">
-                  <FeedbackDetail question={q} selected={selected} isCorrect={isCorrect} />
+                  <FeedbackDetail question={q} selected={selected} isCorrect={isCorrect} onOpenStep7={onOpenStep7} />
                 </div>
               </div>
             )}

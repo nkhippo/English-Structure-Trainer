@@ -1,6 +1,7 @@
 import { createPortal } from 'react-dom';
 import { ROLES } from '../constants/roles.js';
 import { roleStyle } from '../utils/parts.js';
+import { getStep7ChapterAnchor, getStep7ChapterLabel } from '../constants/step7.js';
 import VocabHints from './VocabHints.jsx';
 import { ColorChunk, DetailChunk } from './PartBreakdown.jsx';
 import { POINTS_PER_QUESTION } from '../api/claude.js';
@@ -17,9 +18,10 @@ const C = { card: '#FFFFFF', page: '#FAF9F6', line: '#EAE8E1', t1: '#1C1B19', t2
  *   evaluation: { score: number, correct: boolean, feedback: string, correction: string|null } | null,
  *   revealed: boolean,
  *   onAttemptChange: (v: string) => void,
+ *   onOpenGuideChapter?: (anchor: string) => void,
  * }} props
  */
-export default function QuestionCard({ index, exercise, attempt, evaluation, revealed, onAttemptChange }) {
+export default function QuestionCard({ index, exercise, attempt, evaluation, revealed, onAttemptChange, onOpenGuideChapter }) {
   const { jp, en } = exercise;
   const parts = (exercise.parts ?? []).filter((p) => p?.t);
   const { sectionRef, sentinelRef, pinned, layout } = usePinnedSectionHeader(revealed);
@@ -60,6 +62,27 @@ export default function QuestionCard({ index, exercise, attempt, evaluation, rev
 
       <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: 20 }}>
         <QuestionHeader index={index} jp={jp} style={inFlowHeaderStyle} />
+
+        {(exercise.cefr || exercise.operationTag) && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+            {exercise.cefr && (
+              <span style={{
+                fontSize: 10, fontWeight: 700, color: C.t3,
+                border: `1px solid ${C.line}`, borderRadius: 6, padding: '2px 8px',
+              }}>
+                CEFR {exercise.cefr}
+              </span>
+            )}
+            {exercise.operationTag && (
+              <span style={{
+                fontSize: 10, fontWeight: 700, color: C.t1,
+                background: C.page, border: `1px solid ${C.line}`, borderRadius: 6, padding: '2px 8px',
+              }}>
+                {exercise.operationTag}
+              </span>
+            )}
+          </div>
+        )}
 
         <VocabHints key={jp} hints={exercise.vocabHints} revealed={revealed} />
 
@@ -139,6 +162,19 @@ export default function QuestionCard({ index, exercise, attempt, evaluation, rev
               <div style={{ marginBottom: 14, padding: '10px 14px', borderRadius: 10, background: C.page, border: `1px solid ${C.line}` }}>
                 <p style={{ fontSize: 10.5, fontWeight: 700, color: C.t3, margin: '0 0 4px', letterSpacing: '.05em' }}>模範解答のポイント</p>
                 <p style={{ fontSize: 12, color: C.t1, margin: 0, lineHeight: 1.6 }}>{exercise.nuance}</p>
+                {exercise.operationTag && onOpenGuideChapter && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenGuideChapter(getStep7ChapterAnchor(exercise.operationTag))}
+                    style={{
+                      marginTop: 8, padding: 0, border: 'none', background: 'none',
+                      fontSize: 11, fontWeight: 600, color: C.t2, cursor: 'pointer',
+                      fontFamily: 'inherit', textDecoration: 'underline',
+                    }}
+                  >
+                    構造ガイド：{getStep7ChapterLabel(exercise.operationTag)}を読む →
+                  </button>
+                )}
               </div>
             )}
           </div>

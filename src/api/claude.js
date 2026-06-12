@@ -1,4 +1,5 @@
 import { buildGeneratePrompt, buildCheckPrompt, shuffleArray } from '../prompts/index.js';
+import { saveLastStep7TagSet } from '../constants/step7.js';
 import { buildPhraseGeneratePrompt, buildPhraseFeedbackEnrichPrompt } from '../prompts/phraseQuiz.js';
 import { getLevelConfig, buildPhraseChoices, planPhraseSession } from '../constants/framingExpressions.js';
 import { pushApiDebugLog } from './debugLog.js';
@@ -256,6 +257,9 @@ function normalizeExercise(ex) {
     parts: (ex.parts || []).map(normalizePart).filter(Boolean),
     vocabHints: Array.isArray(ex.vocabHints) ? ex.vocabHints : [],
     nuance: typeof ex.nuance === 'string' ? ex.nuance : '',
+    operationTag: typeof ex.operationTag === 'string' ? ex.operationTag : undefined,
+    cefr: typeof ex.cefr === 'string' ? ex.cefr : undefined,
+    thread: typeof ex.thread === 'string' ? ex.thread : undefined,
   };
 }
 
@@ -270,7 +274,7 @@ function normalizeExercise(ex) {
  * @returns {Promise<Exercise[]>}
  */
 export async function generateExercises(apiKey, stepInfo, n = EXERCISES_PER_SET, { step } = {}) {
-  const { system, user } = buildGeneratePrompt(stepInfo, n);
+  const { system, user } = buildGeneratePrompt(stepInfo, n, { step });
   const raw = await callClaude(apiKey, system, user, {
     prefill: '[',
     maxTokens: MAX_TOKENS_GENERATE,
@@ -281,7 +285,12 @@ export async function generateExercises(apiKey, stepInfo, n = EXERCISES_PER_SET,
   if (!Array.isArray(exercises) || exercises.length === 0) {
     throw new Error('生成結果が不正です');
   }
-  return shuffleArray(exercises.map(normalizeExercise));
+  const normalized = shuffleArray(exercises.map(normalizeExercise));
+  if (step === 7) {
+    const tags = [...new Set(normalized.map((ex) => ex.operationTag).filter(Boolean))];
+    if (tags.length) saveLastStep7TagSet(tags);
+  }
+  return normalized;
 }
 
 /**
@@ -292,7 +301,7 @@ export async function generateExercises(apiKey, stepInfo, n = EXERCISES_PER_SET,
  * @returns {Promise<Evaluation[]>}
  */
 export async function checkAnswers(apiKey, pairs, { step } = {}) {
-  const { system, user } = buildCheckPrompt(pairs);
+  const { system, user } = buildCheckPrompt(pairs, { step });
   let lastError;
 
   for (let attempt = 0; attempt < CHECK_RETRIES; attempt++) {

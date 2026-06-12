@@ -8,6 +8,8 @@ import QuestionCard from './components/QuestionCard.jsx';
 import ApiDebugPanel from './components/ApiDebugPanel.jsx';
 import GuideModal from './components/GuideModal.jsx';
 import PhraseBankQuiz from './components/PhraseBankQuiz.jsx';
+import StepLearnPanel from './components/StepLearnPanel.jsx';
+import SetCompletePanel from './components/SetCompletePanel.jsx';
 import { APP_SCROLL_ID } from './hooks/usePinnedSectionHeader.js';
 
 const C = { page: '#FAF9F6', card: '#FFFFFF', line: '#EAE8E1', t1: '#1C1B19', t2: '#6B6862', t3: '#9A968D', ink: '#1C1B19' };
@@ -24,6 +26,7 @@ export default function App() {
   const [error, setError] = useState('');
   const [debugOpen, setDebugOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
+  const [guideAnchor, setGuideAnchor] = useState(null);
 
   const isPhrase = step === 'phrase';
   const sd = isPhrase ? null : STEPS[step];
@@ -66,6 +69,8 @@ export default function App() {
         attempt: attempts[i] || '',
         parts: ex.parts,
         nuance: ex.nuance,
+        operationTag: ex.operationTag,
+        thread: ex.thread,
       }));
       const results = await checkAnswers(apiKey, pairs, { step });
       const evalMap = {};
@@ -115,7 +120,7 @@ export default function App() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
           <h1 style={{ fontSize: 19, fontWeight: 700, margin: 0 }}>英文構造トレーナー</h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <button type="button" onClick={() => setGuideOpen(true)} style={{
+            <button type="button" onClick={() => { setGuideAnchor(null); setGuideOpen(true); }} style={{
               fontSize: 11, fontWeight: 600, color: C.t1, background: C.card, border: `1px solid ${C.line}`,
               borderRadius: 8, cursor: 'pointer', padding: '5px 10px', fontFamily: 'inherit' }}>
               構造ガイド
@@ -131,7 +136,14 @@ export default function App() {
         <StepTabs currentStep={step} onSwitch={switchStep} />
 
         {isPhrase ? (
-          <PhraseBankQuiz apiKey={apiKey} />
+          <PhraseBankQuiz
+            apiKey={apiKey}
+            onOpenStep7={() => {
+              switchStep(7);
+              setGuideAnchor('ch-27');
+              setGuideOpen(true);
+            }}
+          />
         ) : (
           <>
             {/* Step desc + Create button */}
@@ -141,6 +153,7 @@ export default function App() {
                   <span style={{ fontWeight: 700, color: C.t1 }}>{sd.sub}</span>：{sd.desc}
                 </span>
               </div>
+              <StepLearnPanel step={step} />
               <button type="button" onClick={handleGenerate} disabled={isGenerating} style={{
                 width: '100%', padding: 14, borderRadius: 12, border: 'none',
                 background: C.ink, color: '#fff', fontSize: 15, fontWeight: 700,
@@ -160,6 +173,8 @@ export default function App() {
 
             {/* Score summary (top) */}
             {revealed && Object.keys(evaluations).length > 0 && (
+              <>
+              <SetCompletePanel step={step} onGoToFirstStep={() => switchStep(3)} />
               <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, padding: '14px 16px', marginBottom: 14 }}>
                 <p style={{ fontSize: 12, color: C.t3, margin: '0 0 4px', fontWeight: 600, textAlign: 'center' }}>合計スコア</p>
                 <p style={{ fontSize: 28, fontWeight: 700, margin: '0 0 14px', color: C.t1, lineHeight: 1.2, textAlign: 'center' }}>
@@ -186,6 +201,7 @@ export default function App() {
                   })}
                 </div>
               </div>
+              </>
             )}
 
             {/* Question cards */}
@@ -198,6 +214,7 @@ export default function App() {
                 evaluation={evaluations[i] || null}
                 revealed={revealed}
                 onAttemptChange={(v) => setAttemptsByStep((a) => ({ ...a, [step]: { ...a[step], [i]: v } }))}
+                onOpenGuideChapter={(anchor) => { setGuideAnchor(anchor); setGuideOpen(true); }}
               />
             ))}
 
@@ -223,7 +240,11 @@ export default function App() {
 
       </div>
 
-      <GuideModal open={guideOpen} onClose={() => setGuideOpen(false)} />
+      <GuideModal
+        open={guideOpen}
+        onClose={() => { setGuideOpen(false); setGuideAnchor(null); }}
+        initialAnchor={guideAnchor}
+      />
       <ApiDebugPanel open={debugOpen} onToggle={() => setDebugOpen((v) => !v)} />
     </div>
   );

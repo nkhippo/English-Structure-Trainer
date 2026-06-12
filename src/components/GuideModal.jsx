@@ -59,7 +59,7 @@ function findActiveChapterTitle(scrollRoot) {
   return current;
 }
 
-export default function GuideModal({ open, onClose }) {
+export default function GuideModal({ open, onClose, initialAnchor = null }) {
   const bodyRef = useRef(null);
   const [activeChapterTitle, setActiveChapterTitle] = useState(null);
 
@@ -172,6 +172,16 @@ export default function GuideModal({ open, onClose }) {
     const body = bodyRef.current;
     if (!body) return undefined;
 
+    if (initialAnchor) {
+      const target = document.getElementById(initialAnchor);
+      if (target) {
+        window.requestAnimationFrame(() => {
+          target.scrollIntoView({ behavior: 'auto', block: 'start' });
+          updateActiveChapter();
+        });
+      }
+    }
+
     const onScroll = () => updateActiveChapter();
     body.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', updateActiveChapter);
@@ -181,7 +191,7 @@ export default function GuideModal({ open, onClose }) {
       body.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', updateActiveChapter);
     };
-  }, [open, updateActiveChapter]);
+  }, [open, initialAnchor, updateActiveChapter]);
 
   if (!open) return null;
 

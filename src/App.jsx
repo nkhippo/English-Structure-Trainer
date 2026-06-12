@@ -8,7 +8,7 @@ import QuestionCard from './components/QuestionCard.jsx';
 import ApiDebugPanel from './components/ApiDebugPanel.jsx';
 import GuideModal from './components/GuideModal.jsx';
 import PhraseBankQuiz from './components/PhraseBankQuiz.jsx';
-import StepLearnPanel from './components/StepLearnPanel.jsx';
+import StepInfoAccordion from './components/StepInfoAccordion.jsx';
 import SetCompletePanel from './components/SetCompletePanel.jsx';
 import { APP_SCROLL_ID } from './hooks/usePinnedSectionHeader.js';
 
@@ -148,12 +148,7 @@ export default function App() {
           <>
             {/* Step desc + Create button */}
             <div style={{ marginBottom: 16 }}>
-              <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 10, padding: '8px 12px', marginBottom: 10 }}>
-                <span style={{ fontSize: 12, color: C.t2 }}>
-                  <span style={{ fontWeight: 700, color: C.t1 }}>{sd.sub}</span>：{sd.desc}
-                </span>
-              </div>
-              <StepLearnPanel step={step} />
+              <StepInfoAccordion step={step} />
               <button type="button" onClick={handleGenerate} disabled={isGenerating} style={{
                 width: '100%', padding: 14, borderRadius: 12, border: 'none',
                 background: C.ink, color: '#fff', fontSize: 15, fontWeight: 700,

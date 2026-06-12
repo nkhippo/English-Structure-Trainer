@@ -34,11 +34,19 @@ export default function App() {
   const attempts = isPhrase ? {} : (attemptsByStep[step] || {});
   const evaluations = isPhrase ? {} : (evaluationsByStep[step] || {});
   const revealed = isPhrase ? false : (revealedByStep[step] || false);
+  const showCreateButton = !isPhrase && (exercises.length === 0 || revealed);
 
   // ── Step switch ─────────────────────────────────────────────────────────────
   const switchStep = (s) => {
     setStep(s);
     setError('');
+    if (s !== 'phrase') {
+      setExercisesByStep((prev) => ({ ...prev, [s]: [] }));
+      setAttemptsByStep((prev) => ({ ...prev, [s]: {} }));
+      setEvaluationsByStep((prev) => ({ ...prev, [s]: {} }));
+      setRevealedByStep((prev) => ({ ...prev, [s]: false }));
+    }
+    document.getElementById(APP_SCROLL_ID)?.scrollTo({ top: 0 });
   };
 
   // ── Generate new exercises via Claude ───────────────────────────────────────
@@ -149,14 +157,16 @@ export default function App() {
             {/* Step desc + Create button */}
             <div style={{ marginBottom: 16 }}>
               <StepInfoAccordion step={step} />
-              <button type="button" onClick={handleGenerate} disabled={isGenerating} style={{
-                width: '100%', padding: 14, borderRadius: 12, border: 'none',
-                background: C.ink, color: '#fff', fontSize: 15, fontWeight: 700,
-                cursor: isGenerating ? 'not-allowed' : 'pointer',
-                opacity: isGenerating ? 0.7 : 1, fontFamily: 'inherit',
-              }}>
-                {isGenerating ? '問題を作成中…' : '問題を作成する'}
-              </button>
+              {showCreateButton && (
+                <button type="button" onClick={handleGenerate} disabled={isGenerating} style={{
+                  width: '100%', padding: 14, borderRadius: 12, border: 'none',
+                  background: C.ink, color: '#fff', fontSize: 15, fontWeight: 700,
+                  cursor: isGenerating ? 'not-allowed' : 'pointer',
+                  opacity: isGenerating ? 0.7 : 1, fontFamily: 'inherit',
+                }}>
+                  {isGenerating ? '問題を作成中…' : '問題を作成する'}
+                </button>
+              )}
             </div>
 
             {/* Error */}

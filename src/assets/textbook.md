@@ -1295,16 +1295,163 @@ Y は「形容詞として機能するかたまり」です。常に **名詞に
 
 ### 関係詞節と同格節の違い
 
-両方とも `名詞 + that + S + V` の形に見えますが、**内部の構造が違います**。
+`that` を使った後置修飾は、見た目がとても似ています。
 
-- **関係詞節（gap あり）**：the book [that I read ___]  
-  → `that` が節内の空所（"I read [the book]" の [the book] 部分）を埋める
-- **同格節 that（gap なし）**：the fact [that he left]  
-  → 節がそのまま名詞の内容を説明する（he left がそのまま完成形。空所がない）
+```
+the book that I read
+the fact that he left
+```
 
-**見分け方**
+どちらも `名詞 + that + S + V` の形です。しかし **内部の構造がまったく違います**。混同すると訳し方も語順も崩れるので、ここを丁寧に分けます。
 
-関係詞節は「that を取り除いて、2つの文に分けられる」イメージ。同格節は「that の後ろが名詞の中身そのもの」です。
+| 種類 | 空所（gap） | 役割 | 例 |
+|------|-----------|------|-----|
+| **関係詞節** | **あり** | 名詞の**中身を特定**する（どの本か） | the book **that I read** |
+| **同格節 that** | **なし** | 名詞の**内容を言い換える**（どんな事実か） | the fact **that he left** |
+
+どちらも Y（名詞を修飾）ですが、「that の後ろが名詞とどう関係するか」が違います。
+
+---
+
+#### 関係詞節 —「空所」を that が埋める（gap あり）
+
+**関係詞節** は、節の中に **空所（gap）** があり、`that`（や which / who）が **先行詞（前の名詞）の代わり** にその空所を埋めます。
+
+**例：`the book that I read`**
+
+| 段階 | 文 | 説明 |
+|------|-----|------|
+| ① 2つの文に分ける | I read the book. / The book is interesting. | もともと別々に言える |
+| ② 重なる語を空所に | I read ___. / The book is interesting. | `the book` が重複 |
+| ③ that で空所を埋める | I read **that**. … **The book** that I read is interesting. | that ＝ the book |
+
+```
+the book [that I read ___].
+         └─ Y（関係詞節）─┘
+              that ＝ 空所（目的語の位置）
+              「I read [???]」の ??? を the book で埋めている
+```
+
+**ポイント**
+
+- `that` は **「the book の代わり」** として節の中に入る
+- 節だけ取り出すと `I read ___` となり、**何かが足りない**（空所がある）
+- 日本語の「**私が読んだ**本」＝ 名詞（本）の**特定**
+
+**別の例**
+
+| 関係詞節 | 分けた2文 | 空所の位置 |
+|---------|----------|-----------|
+| the man **who spoke** | The man spoke. / The man is my boss. | 主語（who spoke） |
+| the city **where I live** | I live in the city. | 場所（where） |
+| the book **(that) I bought** | I bought the book. | 目的語（that） |
+
+> **覚え方**：関係詞節は「前の名詞を、後ろの節の中に差し込める」＝ **gap あり**
+
+---
+
+#### 同格節 that —「内容」そのものを述べる（gap なし）
+
+**同格節 that** は、前の名詞が **「内容・事実・考え」** を表すとき、その**中身をそのまま言い換える**節です。節の中に空所はありません。
+
+**例：`the fact that he left`**
+
+| 段階 | 文 | 説明 |
+|------|-----|------|
+| ① 名詞の意味を確認 | the fact ＝ 「事実」という**抽象名詞** | 中身を説明する必要がある |
+| ② 中身を平叙文で | He left. | これが「事実」の内容 |
+| ③ that でつなぐ | the fact **that he left** | 「彼が去った」という事実 |
+
+```
+the fact [that he left].
+         └─ Y（同格節）─┘
+              he left は完成形（空所なし）
+              「事実」の中身 ＝ 彼が去った、ということ
+```
+
+**ポイント**
+
+- `he left` は **それだけで1文として完結** する（空所がない）
+- `that` は **関係代名詞ではなく接続詞** の働き——「以下が fact の内容です」
+- 前の名詞 `fact` を節の中に差し込もうとするとおかしい（× he left the fact）
+- 日本語の「**彼が去った**という事実」＝ 名詞（事実）の**内容説明**
+
+**同格節が付きやすい名詞**
+
+fact / idea / news / belief / rumor / hope / thought / saying など、**「〜という内容」** を持つ名詞：
+
+| 同格節 | 意味 |
+|--------|------|
+| the idea **that we should leave** | 私たちは去るべきだ、という考え |
+| the news **that she won** | 彼女が勝った、という知らせ |
+| the belief **that he is innocent** | 彼は無実だ、という信念 |
+
+---
+
+#### 見分け方 — 3つのチェック
+
+形が似ているので、次の順番で確認します。
+
+**チェック1：節の中に空所があるか？**
+
+| 節だけ取り出す | 空所 | 判定 |
+|--------------|------|------|
+| I read ___ | あり（目的語がない） | 関係詞節 |
+| he left | なし（完成形） | 同格節 |
+
+**チェック2：2文に分けられるか？**
+
+| 文 | 分け方 | 判定 |
+|----|--------|------|
+| the book that I read | I read the book. ✓ | 関係詞節 |
+| the fact that he left | He left. ✓（ただし「事実」と「去った」は別の言い方） | 同格節 |
+
+関係詞節は **前の名詞を後ろの節にそのまま戻せる**（I read **the book**）。  
+同格節は **that の後ろが名詞の中身の言い換え** で、名詞を節に差し込むイメージではない。
+
+**チェック3：前の名詞は「もの」か「内容」か？**
+
+| 先行詞 | タイプ | 判定 |
+|--------|--------|------|
+| book / man / city | 具体的なもの・人・場所 | 関係詞節になりやすい |
+| fact / idea / news | 抽象名詞（中身がある） | 同格節になりやすい |
+
+---
+
+#### Walk-through：2文を比較する
+
+**関係詞節：`The book that I bought is interesting.`**
+
+```
+The book is interesting.     ← 骨格
+    the book [that I bought]   ← Y。that I bought ＝ どの本か
+         I bought the book.   ← 名詞を節に戻せる ✓
+```
+
+**同格節：`The fact that he lied surprised me.`**
+
+```
+The fact surprised me.         ← 骨格
+    the fact [that he lied]    ← Y。that he lied ＝ どんな事実か
+         He lied.              ← 事実の中身（完成形）✓
+         × He lied the fact.   ← 名詞を節に戻せない ✗
+```
+
+---
+
+#### なぜ混同しやすいか — 第10章の that節との関係
+
+| that の種類 | 役割 | 例 |
+|------------|------|-----|
+| 名詞節の that（第10章） | 節全体が **X**（目的語など） | I know **that he is honest**. |
+| 関係詞節の that | 節が **Y**（名詞を修飾）、gap あり | the book **that I read** |
+| 同格節の that | 節が **Y**（名詞の内容）、gap なし | the fact **that he lied** |
+
+3つとも `that` を使いますが、**文の中での働き** が違います（→ [第14章](#ch-14)）。見た目だけで判断せず、**空所の有無** と **前の名詞との関係** で見分けてください。
+
+> **覚え方**
+> - 関係詞節：「**どの** book？」→ 名詞を特定（gap あり）
+> - 同格節：「**どんな** fact？」→ 名詞の中身を説明（gap なし）
 
 ---
 

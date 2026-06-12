@@ -74,6 +74,10 @@
   margin-top: 0;
 }
 
+.guide-markdown h1.guide-part-heading {
+  scroll-margin-top: 12px;
+}
+
 .guide-markdown h2 {
   font-size: 18px;
   font-weight: 700;

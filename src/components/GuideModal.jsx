@@ -28,6 +28,14 @@ function chapterNumberFromId(id) {
   return match ? Number(match[1]) : null;
 }
 
+function partIdFromHeading(children) {
+  const text = getTextFromChildren(children).trim();
+  const partMatch = text.match(/^第(\d+)部/);
+  if (partMatch) return `part-${partMatch[1]}`;
+  if (text.startsWith('付録')) return 'appendix';
+  return null;
+}
+
 export default function GuideModal({ open, onClose }) {
   const handleAnchorClick = useCallback((event, href) => {
     if (!href?.startsWith('#')) return;
@@ -41,6 +49,19 @@ export default function GuideModal({ open, onClose }) {
 
   const markdownComponents = useMemo(
     () => ({
+      h1: ({ children, ...props }) => {
+        const id = partIdFromHeading(children);
+
+        return (
+          <h1
+            id={id ?? undefined}
+            className={id ? 'guide-part-heading' : undefined}
+            {...props}
+          >
+            {children}
+          </h1>
+        );
+      },
       h2: ({ children, ...props }) => {
         const id = chapterIdFromHeading(children);
         const chapterNum = chapterNumberFromId(id);

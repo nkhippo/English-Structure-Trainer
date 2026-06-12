@@ -9,6 +9,18 @@ import './PhraseBankQuiz.css';
 
 const C = { card: '#FFFFFF', line: '#EAE8E1', t1: '#1C1B19', t2: '#6B6862', t3: '#9A968D', ink: '#1C1B19' };
 
+/** Split en at the single blank (___); strip stray underscores before the blank. */
+function splitPhraseBlank(en) {
+  const idx = en.indexOf('___');
+  if (idx === -1) {
+    const match = en.match(/_{2,}/);
+    if (!match) return { before: en, after: '' };
+    const at = en.indexOf(match[0]);
+    return { before: en.slice(0, at).replace(/_+$/, ''), after: en.slice(at + match[0].length) };
+  }
+  return { before: en.slice(0, idx).replace(/_+$/, ''), after: en.slice(idx + 3) };
+}
+
 function FeedbackDetail({ question, selected, isCorrect }) {
   const selectedKey = selected.trim().toLowerCase();
   const selectedConfusable = question.confusables?.find(
@@ -77,7 +89,7 @@ export default function PhraseBankQuiz({ apiKey }) {
   const perSet = Math.min(PHRASE_QUESTIONS_PER_SET, bankSize);
   const q = pool[idx];
   const isCorrect = checked && q && selected.trim().toLowerCase() === q.expr.toLowerCase();
-  const parts = q ? q.en.split('___') : [];
+  const blankParts = q ? splitPhraseBlank(q.en) : { before: '', after: '' };
   const progress = pool.length ? Math.round((idx + (checked ? 1 : 0)) / pool.length * 100) : 0;
 
   function resetQuiz() {
@@ -225,7 +237,7 @@ export default function PhraseBankQuiz({ apiKey }) {
           <div style={styles.card}>
             <p style={{ fontSize: 15, margin: '0 0 10px', lineHeight: 1.6 }}>「{q.jp}」</p>
             <p style={{ fontSize: 14, margin: '0 0 14px', lineHeight: 1.7, color: C.t2 }}>
-              {parts[0]}<span style={{ color: C.t1, fontWeight: 600 }}> ___ </span>{parts[1]}
+              {blankParts.before}<span style={{ color: C.t1, fontWeight: 600 }}>___</span>{blankParts.after}
             </p>
 
             <div className={`phrase-choices-accordion${checked ? ' phrase-choices-accordion--answered' : ''}`}>

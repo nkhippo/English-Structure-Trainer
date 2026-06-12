@@ -405,6 +405,17 @@ function stripJapaneseQuotes(text) {
   return String(text || '').trim().replace(/^[「『"']+|[」』"']+$/g, '').trim();
 }
 
+/** Collapse stray underscores before the canonical ___ blank (e.g. "__ ___ fire" → "___ fire"). */
+function normalizePhraseBlank(en) {
+  const text = String(en || '').trim();
+  const idx = text.indexOf('___');
+  if (idx === -1) return text;
+  const before = text.slice(0, idx).replace(/_+$/, '').trimEnd();
+  const after = text.slice(idx + 3).trimStart();
+  if (!before) return after ? `___ ${after}` : '___';
+  return after ? `${before} ___ ${after}` : `${before} ___`;
+}
+
 function normalizePhraseQuestion(q, targets) {
   const target = targets.find(
     (t) => t.expr.toLowerCase() === String(q.expr || '').trim().toLowerCase(),
@@ -422,7 +433,7 @@ function normalizePhraseQuestion(q, targets) {
   return {
     expr: target.expr,
     jp: stripJapaneseQuotes(q.jp),
-    en: String(q.en || '').trim(),
+    en: normalizePhraseBlank(q.en),
     meaning: String(q.meaning || '').trim(),
     correctFit: String(q.correctFit || '').trim(),
     distractors,

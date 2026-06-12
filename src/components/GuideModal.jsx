@@ -1,10 +1,63 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import textbook from '../assets/textbook.md?raw';
 import './GuideModal.css';
 
+function getTextFromChildren(children) {
+  if (children == null) return '';
+  if (typeof children === 'string') return children;
+  if (typeof children === 'number') return String(children);
+  if (Array.isArray(children)) return children.map(getTextFromChildren).join('');
+  if (typeof children === 'object' && children.props?.children != null) {
+    return getTextFromChildren(children.props.children);
+  }
+  return '';
+}
+
+function chapterIdFromHeading(children) {
+  const match = getTextFromChildren(children).match(/^第(\d+)章/);
+  return match ? `ch-${match[1]}` : null;
+}
+
 export default function GuideModal({ open, onClose }) {
+  const handleAnchorClick = useCallback((event, href) => {
+    if (!href?.startsWith('#')) return;
+
+    event.preventDefault();
+    const target = document.getElementById(href.slice(1));
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, []);
+
+  const markdownComponents = useMemo(
+    () => ({
+      h2: ({ children, ...props }) => {
+        const id = chapterIdFromHeading(children);
+        return (
+          <h2
+            id={id ?? undefined}
+            className={id ? 'guide-chapter-heading' : undefined}
+            {...props}
+          >
+            {children}
+          </h2>
+        );
+      },
+      a: ({ href, children, ...props }) => (
+        <a
+          href={href}
+          onClick={href?.startsWith('#') ? (event) => handleAnchorClick(event, href) : undefined}
+          {...props}
+        >
+          {children}
+        </a>
+      ),
+    }),
+    [handleAnchorClick],
+  );
+
   useEffect(() => {
     if (!open) return undefined;
 
@@ -41,7 +94,9 @@ export default function GuideModal({ open, onClose }) {
         </div>
         <div className="guide-body">
           <div className="guide-markdown">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{textbook}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+              {textbook}
+            </ReactMarkdown>
           </div>
         </div>
       </div>

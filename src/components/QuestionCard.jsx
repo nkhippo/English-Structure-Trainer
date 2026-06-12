@@ -63,27 +63,6 @@ export default function QuestionCard({ index, exercise, attempt, evaluation, rev
       <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: 20 }}>
         <QuestionHeader index={index} jp={jp} style={inFlowHeaderStyle} />
 
-        {(exercise.cefr || exercise.operationTag) && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
-            {exercise.cefr && (
-              <span style={{
-                fontSize: 10, fontWeight: 700, color: C.t3,
-                border: `1px solid ${C.line}`, borderRadius: 6, padding: '2px 8px',
-              }}>
-                CEFR {exercise.cefr}
-              </span>
-            )}
-            {exercise.operationTag && (
-              <span style={{
-                fontSize: 10, fontWeight: 700, color: C.t1,
-                background: C.page, border: `1px solid ${C.line}`, borderRadius: 6, padding: '2px 8px',
-              }}>
-                {exercise.operationTag}
-              </span>
-            )}
-          </div>
-        )}
-
         <VocabHints key={jp} hints={exercise.vocabHints} revealed={revealed} />
 
         {/* Textarea (hidden after answer check) */}

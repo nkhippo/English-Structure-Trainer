@@ -82,6 +82,34 @@
 }
 
 .guide-markdown h2.guide-chapter-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  scroll-margin-top: 12px;
+}
+
+.guide-markdown h2.guide-chapter-heading .guide-chapter-heading-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.guide-markdown a.guide-chapter-back-link {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b6862;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.guide-markdown a.guide-chapter-back-link:hover {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
+.guide-markdown h3.guide-steps-anchor {
   scroll-margin-top: 12px;
 }
 

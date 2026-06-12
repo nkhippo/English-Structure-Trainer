@@ -15,9 +15,17 @@ function getTextFromChildren(children) {
   return '';
 }
 
+const CHAPTER3_STEPS_ANCHOR = 'ch-3-steps';
+
 function chapterIdFromHeading(children) {
   const match = getTextFromChildren(children).match(/^第(\d+)章/);
   return match ? `ch-${match[1]}` : null;
+}
+
+function chapterNumberFromId(id) {
+  if (!id) return null;
+  const match = id.match(/^ch-(\d+)$/);
+  return match ? Number(match[1]) : null;
 }
 
 export default function GuideModal({ open, onClose }) {
@@ -35,14 +43,40 @@ export default function GuideModal({ open, onClose }) {
     () => ({
       h2: ({ children, ...props }) => {
         const id = chapterIdFromHeading(children);
+        const chapterNum = chapterNumberFromId(id);
+        const showBackLink = chapterNum != null && chapterNum >= 4;
+
         return (
           <h2
             id={id ?? undefined}
             className={id ? 'guide-chapter-heading' : undefined}
             {...props}
           >
-            {children}
+            <span className="guide-chapter-heading-main">{children}</span>
+            {showBackLink && (
+              <a
+                href={`#${CHAPTER3_STEPS_ANCHOR}`}
+                className="guide-chapter-back-link"
+                onClick={(event) => handleAnchorClick(event, `#${CHAPTER3_STEPS_ANCHOR}`)}
+              >
+                第3章の対応表へ
+              </a>
+            )}
           </h2>
+        );
+      },
+      h3: ({ children, ...props }) => {
+        const isStepsTable =
+          getTextFromChildren(children).trim() === '学習ステップとアプリの対応';
+
+        return (
+          <h3
+            id={isStepsTable ? CHAPTER3_STEPS_ANCHOR : undefined}
+            className={isStepsTable ? 'guide-steps-anchor' : undefined}
+            {...props}
+          >
+            {children}
+          </h3>
         );
       },
       a: ({ href, children, ...props }) => (

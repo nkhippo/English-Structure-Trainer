@@ -11,6 +11,7 @@ import PhraseBankQuiz from './components/PhraseBankQuiz.jsx';
 import StepInfoAccordion from './components/StepInfoAccordion.jsx';
 import SetCompletePanel from './components/SetCompletePanel.jsx';
 import CopyResultsButton from './components/CopyResultsButton.jsx';
+import GradingOverlay from './components/GradingOverlay.jsx';
 import { APP_SCROLL_ID } from './hooks/usePinnedSectionHeader.js';
 import { formatResultsMarkdown } from './utils/formatResultsMarkdown.js';
 
@@ -249,6 +250,7 @@ export default function App() {
         initialAnchor={guideAnchor}
       />
       <ApiDebugPanel open={debugOpen} onToggle={() => setDebugOpen((v) => !v)} />
+      {isChecking && <GradingOverlay questionCount={exercises.length} />}
     </div>
   );
 }

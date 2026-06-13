@@ -2,7 +2,6 @@ import { buildGeneratePrompt, buildCheckPrompt, shuffleArray } from '../prompts/
 import { saveLastStep7TagSet } from '../constants/step7.js';
 import { buildPhraseGeneratePrompt, buildPhraseFeedbackEnrichPrompt } from '../prompts/phraseQuiz.js';
 import { getLevelConfig, buildPhraseChoices, planPhraseSession } from '../constants/framingExpressions.js';
-import { pushApiDebugLog } from './debugLog.js';
 import { normalizePart } from '../utils/parts.js';
 
 const ENDPOINT = 'https://api.anthropic.com/v1/messages';
@@ -11,10 +10,6 @@ const MODEL_CHECK = 'claude-sonnet-4-5-20250929';
 const MAX_TOKENS_CHECK = 6144;
 const MAX_TOKENS_GENERATE = 8192;
 const CHECK_RETRIES = 2;
-
-/** Current max_tokens ceilings (for debug UI). */
-export const API_MAX_TOKENS_CHECK = MAX_TOKENS_CHECK;
-export const API_MAX_TOKENS_GENERATE = MAX_TOKENS_GENERATE;
 
 /** Number of exercises generated and shown per session. */
 export const EXERCISES_PER_SET = 7;
@@ -203,7 +198,7 @@ function parseJsonArray(text) {
 
 // ── Core fetch wrapper ───────────────────────────────────────────────────────
 
-async function callClaude(apiKey, system, userMessage, { prefill, debug, maxTokens = MAX_TOKENS_CHECK, model = MODEL_GENERATE } = {}) {
+async function callClaude(apiKey, system, userMessage, { prefill, maxTokens = MAX_TOKENS_CHECK, model = MODEL_GENERATE } = {}) {
   const messages = [{ role: 'user', content: userMessage }];
   if (prefill) {
     messages.push({ role: 'assistant', content: prefill });
@@ -234,21 +229,7 @@ async function callClaude(apiKey, system, userMessage, { prefill, debug, maxToke
 
   const data = await res.json();
   const text = data.content?.[0]?.text ?? '';
-  const fullText = prefill ? prefill + text : text;
-
-  if (debug) {
-    pushApiDebugLog({
-      operation: debug.operation,
-      step: debug.step ?? null,
-      input_tokens: data.usage?.input_tokens ?? null,
-      output_tokens: data.usage?.output_tokens ?? null,
-      stop_reason: data.stop_reason ?? null,
-      max_tokens: maxTokens,
-      response_chars: fullText.length,
-    });
-  }
-
-  return fullText;
+  return prefill ? prefill + text : text;
 }
 
 function normalizeExercise(ex) {
@@ -278,7 +259,6 @@ export async function generateExercises(apiKey, stepInfo, n = EXERCISES_PER_SET,
   const raw = await callClaude(apiKey, system, user, {
     prefill: '[',
     maxTokens: MAX_TOKENS_GENERATE,
-    debug: { operation: 'generate', step: step ?? null },
   });
   const exercises = parseJsonArray(raw);
 
@@ -309,7 +289,6 @@ export async function checkAnswers(apiKey, pairs, { step } = {}) {
       const raw = await callClaude(apiKey, system, user, {
         prefill: '[',
         model: MODEL_CHECK,
-        debug: { operation: 'check', step: step ?? null },
       });
       const evaluations = parseJsonArray(raw);
 
@@ -374,7 +353,6 @@ async function enrichPhraseFeedback(apiKey, questions, levelId) {
   const raw = await callClaude(apiKey, system, user, {
     prefill: '[',
     maxTokens: MAX_TOKENS_GENERATE,
-    debug: { operation: 'phrase_feedback_enrich', step: `phrase-${levelId}` },
   });
   const enriched = parseJsonArray(raw);
 
@@ -489,7 +467,6 @@ export async function generatePhraseQuestions(apiKey, levelId, targets) {
   const raw = await callClaude(apiKey, system, user, {
     prefill: '[',
     maxTokens: MAX_TOKENS_GENERATE,
-    debug: { operation: 'phrase_generate', step: `phrase-${levelId}` },
   });
   const questions = parseJsonArray(raw);
 

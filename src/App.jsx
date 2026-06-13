@@ -5,7 +5,6 @@ import { getStoredApiKey, clearApiKey, generateExercises, checkAnswers, EXERCISE
 import ApiKeyInput from './components/ApiKeyInput.jsx';
 import StepTabs from './components/StepTabs.jsx';
 import QuestionCard from './components/QuestionCard.jsx';
-import ApiDebugPanel from './components/ApiDebugPanel.jsx';
 import GuideModal from './components/GuideModal.jsx';
 import PhraseBankQuiz from './components/PhraseBankQuiz.jsx';
 import StepInfoAccordion from './components/StepInfoAccordion.jsx';
@@ -27,7 +26,6 @@ export default function App() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
   const [error, setError] = useState('');
-  const [debugOpen, setDebugOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
   const [guideAnchor, setGuideAnchor] = useState(null);
 
@@ -112,7 +110,7 @@ export default function App() {
         height: '100%',
         overflowY: 'auto',
         WebkitOverflowScrolling: 'touch',
-        padding: `18px 16px ${debugOpen ? 280 : 48}px`,
+        padding: '18px 16px 48px',
         fontFamily: "'Hiragino Sans','Hiragino Kaku Gothic ProN','Yu Gothic','Meiryo',system-ui,sans-serif",
         color: C.t1,
         boxSizing: 'border-box',
@@ -249,7 +247,6 @@ export default function App() {
         onClose={() => { setGuideOpen(false); setGuideAnchor(null); }}
         initialAnchor={guideAnchor}
       />
-      <ApiDebugPanel open={debugOpen} onToggle={() => setDebugOpen((v) => !v)} />
       {isChecking && <GradingOverlay questionCount={exercises.length} />}
     </div>
   );

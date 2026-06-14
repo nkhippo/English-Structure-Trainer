@@ -251,6 +251,14 @@ inner の例（副詞節）:
     { "t": "arises", "r": "V", "n": "動詞（現在形）" }
   ]
 
+inner の例（副詞句＋名詞の後置修飾）:
+  "t": "At the art exhibition held last year", "r": "Z", "n": "副詞役 · 場所・時を表す前置詞句",
+  "inner": [
+    { "t": "At the art exhibition", "r": "Z", "n": "場所の前置詞句" },
+    { "t": "held last year", "r": "Y", "n": "過去分詞による後置修飾（exhibition を修飾）" }
+  ]
+  ※ inner に後置修飾（Y）だけを書いて前置詞句の頭（At the art exhibition）を省略しないこと
+
 parts[].n の書き方:
 - 前半: 文法上の役割（例: 「分詞構文（副詞役・前置）」「目的語と補語」）
 - 後半（語順・前置・後置・表現の選択が学習ポイントのとき必須）: 「 · 」で区切り、なぜその位置・形が望ましいかを1文で

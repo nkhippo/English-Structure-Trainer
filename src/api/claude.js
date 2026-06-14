@@ -295,7 +295,7 @@ export async function checkAnswers(apiKey, pairs, { step } = {}) {
       if (!Array.isArray(evaluations) || evaluations.length !== pairs.length) {
         throw new Error('採点結果の件数が一致しません');
       }
-      return evaluations.map(normalizeEvaluation);
+      return evaluations.map((ev, i) => normalizeEvaluation(ev, pairs[i]?.attempt));
     } catch (e) {
       lastError = e;
     }
@@ -511,9 +511,21 @@ export function planPhraseQuizTargets(levelId, count) {
   return planPhraseSession(levelId, count);
 }
 
-function normalizeEvaluation(ev) {
+function normalizeEvaluation(ev, attempt = '') {
+  const hasAttempt = String(attempt || '').trim().length > 0;
+
+  if (!hasAttempt) {
+    return {
+      ...ev,
+      score: 0,
+      correct: false,
+    };
+  }
+
   const raw = Number(ev.score);
-  const score = Number.isFinite(raw) ? Math.min(10, Math.max(0, Math.round(raw))) : (ev.correct ? 10 : 0);
+  const rounded = Number.isFinite(raw) ? Math.round(raw) : (ev.correct ? 10 : 1);
+  const score = Math.min(10, Math.max(1, rounded));
+
   return {
     ...ev,
     score,

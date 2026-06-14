@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { ROLES } from './constants/roles.js';
 import { STEPS } from './constants/steps.js';
 import { getStoredApiKey, clearApiKey, generateExercises, checkAnswers, EXERCISES_PER_SET, POINTS_PER_QUESTION } from './api/claude.js';
 import ApiKeyInput from './components/ApiKeyInput.jsx';
@@ -11,6 +10,8 @@ import StepInfoAccordion from './components/StepInfoAccordion.jsx';
 import SetCompletePanel from './components/SetCompletePanel.jsx';
 import CopyResultsButton from './components/CopyResultsButton.jsx';
 import GradingOverlay from './components/GradingOverlay.jsx';
+import ScoringCriteriaModal from './components/ScoringCriteriaModal.jsx';
+import { getScoreStyle } from './constants/scoring.js';
 import { APP_SCROLL_ID } from './hooks/usePinnedSectionHeader.js';
 import { formatResultsMarkdown } from './utils/formatResultsMarkdown.js';
 
@@ -28,6 +29,7 @@ export default function App() {
   const [error, setError] = useState('');
   const [guideOpen, setGuideOpen] = useState(false);
   const [guideAnchor, setGuideAnchor] = useState(null);
+  const [scoringOpen, setScoringOpen] = useState(false);
 
   const isPhrase = step === 'phrase';
   const sd = isPhrase ? null : STEPS[step];
@@ -181,17 +183,15 @@ export default function App() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(72px, 1fr))', gap: 8 }}>
                   {exercises.map((_, i) => {
                     const ev = evaluations[i];
-                    const correct = ev?.correct;
-                    const scoreColor = correct ? ROLES.V.text : ROLES.Y.text;
-                    const scoreBg = correct ? ROLES.V.bg : ROLES.Y.bg;
-                    const scoreBorder = correct ? ROLES.V.border : ROLES.Y.border;
+                    const unentered = !(attempts[i] || '').trim();
+                    const style = getScoreStyle(ev?.score ?? 0, { unentered });
                     return (
                       <div key={i} style={{
                         textAlign: 'center', padding: '8px 6px', borderRadius: 10,
-                        background: scoreBg, border: `1px solid ${scoreBorder}`,
+                        background: style.bg, border: `1px solid ${style.border}`,
                       }}>
                         <p style={{ fontSize: 11, fontWeight: 700, color: C.t3, margin: '0 0 2px' }}>Q{i + 1}</p>
-                        <p style={{ fontSize: 15, fontWeight: 700, margin: 0, color: scoreColor }}>
+                        <p style={{ fontSize: 15, fontWeight: 700, margin: 0, color: style.text }}>
                           {ev?.score ?? 0}<span style={{ fontSize: 11, fontWeight: 600 }}>/{POINTS_PER_QUESTION}</span>
                         </p>
                       </div>
@@ -218,15 +218,32 @@ export default function App() {
 
             {/* Bulk action */}
             {exercises.length > 0 && !revealed ? (
-              <button onClick={handleCheck} disabled={isChecking} style={{
+              <>
+                <button type="button" onClick={() => setScoringOpen(true)} style={{
+                  width: '100%', marginBottom: 8, padding: '8px 12px', borderRadius: 10,
+                  border: `1px solid ${C.line}`, background: C.card, color: C.t2,
+                  fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                }}>
+                  採点基準を見る
+                </button>
+                <button onClick={handleCheck} disabled={isChecking} style={{
                 width: '100%', padding: 15, borderRadius: 14, border: 'none',
                 cursor: isChecking ? 'not-allowed' : 'pointer',
                 background: C.ink, color: '#fff', fontSize: 15, fontWeight: 700,
                 opacity: isChecking ? 0.7 : 1, fontFamily: 'inherit', marginTop: 4 }}>
                 {isChecking ? 'Claude が採点中…' : `まとめて答え合わせ（${exercises.length}問）`}
               </button>
+              </>
             ) : exercises.length > 0 && revealed ? (
-              <CopyResultsButton
+              <>
+                <button type="button" onClick={() => setScoringOpen(true)} style={{
+                  width: '100%', marginBottom: 8, padding: '8px 12px', borderRadius: 10,
+                  border: `1px solid ${C.line}`, background: C.card, color: C.t2,
+                  fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                }}>
+                  採点基準を見る
+                </button>
+                <CopyResultsButton
                 getMarkdown={() => formatResultsMarkdown({
                   step,
                   stepLabel: sd.focus,
@@ -236,6 +253,7 @@ export default function App() {
                   evaluations,
                 })}
               />
+              </>
             ) : null}
           </>
         )}
@@ -247,6 +265,7 @@ export default function App() {
         onClose={() => { setGuideOpen(false); setGuideAnchor(null); }}
         initialAnchor={guideAnchor}
       />
+      <ScoringCriteriaModal open={scoringOpen} onClose={() => setScoringOpen(false)} />
       {isChecking && <GradingOverlay questionCount={exercises.length} />}
     </div>
   );

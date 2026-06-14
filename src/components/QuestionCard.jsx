@@ -1,10 +1,10 @@
 import { createPortal } from 'react-dom';
-import { ROLES } from '../constants/roles.js';
 import { roleStyle } from '../utils/parts.js';
 import { getStep7ChapterAnchor, getStep7ChapterLabel } from '../constants/step7.js';
 import VocabHints from './VocabHints.jsx';
 import { ColorChunk, DetailChunk } from './PartBreakdown.jsx';
 import { POINTS_PER_QUESTION } from '../api/claude.js';
+import { getScoreStyle } from '../constants/scoring.js';
 import QuestionHeader from './QuestionHeader.jsx';
 import { usePinnedSectionHeader } from '../hooks/usePinnedSectionHeader.js';
 
@@ -98,21 +98,25 @@ export default function QuestionCard({ index, exercise, attempt, evaluation, rev
             </div>
 
             {/* AI evaluation */}
-            {evaluation && (
+            {evaluation && (() => {
+              const unentered = !attempt.trim();
+              const style = getScoreStyle(evaluation.score, { unentered });
+              return (
               <div style={{ marginBottom: 14, padding: '10px 14px', borderRadius: 10,
-                background: evaluation.correct ? ROLES.V.bg : ROLES.Y.bg,
-                border: `1px solid ${evaluation.correct ? ROLES.V.border : ROLES.Y.border}` }}>
+                background: style.bg,
+                border: `1px solid ${style.border}` }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
-                  <p style={{ fontSize: 12, fontWeight: 700, margin: 0, color: evaluation.correct ? ROLES.V.text : ROLES.Y.text }}>
-                    {evaluation.correct ? '✓ 正解' : '✗ 要修正'}
+                  <p style={{ fontSize: 12, fontWeight: 700, margin: 0, color: style.text }}>
+                    {evaluation.correct ? '✓ 正解' : unentered ? '— 未入力' : '✗ 要修正'}
                   </p>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: evaluation.correct ? ROLES.V.text : ROLES.Y.text }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: style.text }}>
                     {evaluation.score} / {POINTS_PER_QUESTION}点
                   </span>
                 </div>
                 <p style={{ fontSize: 13, margin: '0', color: C.t1, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{evaluation.feedback}</p>
               </div>
-            )}
+              );
+            })()}
 
             {/* Frame */}
             <p style={{ fontSize: 10.5, fontWeight: 700, color: C.t3, margin: '0 0 5px', letterSpacing: '.05em' }}>骨格フレーム</p>

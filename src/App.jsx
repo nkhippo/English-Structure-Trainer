@@ -123,6 +123,13 @@ export default function App() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
           <h1 style={{ fontSize: 19, fontWeight: 700, margin: 0 }}>英文構造トレーナー</h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {!isPhrase && (
+              <button type="button" onClick={() => setScoringOpen(true)} style={{
+                fontSize: 11, fontWeight: 600, color: C.t1, background: C.card, border: `1px solid ${C.line}`,
+                borderRadius: 8, cursor: 'pointer', padding: '5px 10px', fontFamily: 'inherit' }}>
+                採点基準
+              </button>
+            )}
             <button type="button" onClick={() => { setGuideAnchor(null); setGuideOpen(true); }} style={{
               fontSize: 11, fontWeight: 600, color: C.t1, background: C.card, border: `1px solid ${C.line}`,
               borderRadius: 8, cursor: 'pointer', padding: '5px 10px', fontFamily: 'inherit' }}>

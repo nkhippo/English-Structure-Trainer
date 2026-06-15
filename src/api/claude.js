@@ -11,7 +11,7 @@ const MAX_TOKENS_CHECK = 8192;
 const MAX_TOKENS_GENERATE = 8192;
 const CHECK_RETRIES = 2;
 /** Questions per grading API call (sequential batches). */
-export const CHECK_BATCH_SIZE = 2;
+export const CHECK_BATCH_SIZE = 1;
 
 /** Number of exercises generated and shown per session. */
 export const EXERCISES_PER_SET = 7;

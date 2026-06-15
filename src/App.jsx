@@ -75,7 +75,7 @@ export default function App() {
     }
   };
 
-  // ── Bulk answer check via Claude (2 questions per batch, resumable) ─────────
+  // ── Bulk answer check via Claude (1 question per batch, resumable) ─────────
   const handleCheck = async () => {
     const startIndex = checkResumeFrom ?? 0;
     setIsChecking(true);

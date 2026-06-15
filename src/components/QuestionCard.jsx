@@ -60,7 +60,7 @@ export default function QuestionCard({ index, exercise, attempt, evaluation, rev
     <section ref={sectionRef} style={{ marginBottom: 12 }}>
       {revealed && <div ref={sentinelRef} aria-hidden="true" style={{ height: 0 }} />}
 
-      <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: 20 }}>
+      <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: 20, minWidth: 0, overflow: 'hidden' }}>
         <QuestionHeader index={index} jp={jp} style={inFlowHeaderStyle} />
 
         <VocabHints key={jp} hints={exercise.vocabHints} revealed={revealed} />
@@ -130,7 +130,7 @@ export default function QuestionCard({ index, exercise, attempt, evaluation, rev
 
             {/* Color-coded answer */}
             <p style={{ fontSize: 10.5, fontWeight: 700, color: C.t3, margin: '0 0 8px', letterSpacing: '.05em' }}>模範解答（語順のまま色分け）</p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 8px', alignItems: 'flex-end', marginBottom: 14 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14, minWidth: 0 }}>
               {parts.map((p, j) => (
                 <ColorChunk key={j} part={p} />
               ))}
@@ -138,7 +138,7 @@ export default function QuestionCard({ index, exercise, attempt, evaluation, rev
 
             {/* Detail chips */}
             <p style={{ fontSize: 10.5, fontWeight: 700, color: C.t3, margin: '0 0 8px', letterSpacing: '.05em' }}>各チャンクの役割</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14, minWidth: 0 }}>
               {parts.map((p, j) => (
                 <DetailChunk key={j} part={p} />
               ))}

@@ -70,20 +70,3 @@ export function normalizePart(part) {
   };
   return repairPartInner(normalized);
 }
-
-/** @param {Part[]} parts @param {number} [depth] */
-export function formatPartsForCheck(parts, depth = 0) {
-  if (!parts?.length) return '';
-  const indent = '  '.repeat(depth + 1);
-  const lines = parts.flatMap((p) => {
-    const line = `${indent}- [${p.r}] ${p.t}${p.n ? `（${p.n}）` : ''}`;
-    if (p.inner?.length) {
-      return [line, formatPartsForCheck(p.inner, depth + 1)];
-    }
-    return [line];
-  });
-  if (depth === 0) {
-    return `\n構造分解:\n${lines.join('\n')}`;
-  }
-  return lines.join('\n');
-}

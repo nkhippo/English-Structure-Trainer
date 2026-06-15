@@ -2,7 +2,7 @@ import { createPortal } from 'react-dom';
 import { roleStyle } from '../utils/parts.js';
 import { getStep7ChapterAnchor, getStep7ChapterLabel } from '../constants/step7.js';
 import VocabHints from './VocabHints.jsx';
-import { ColorChunk, DetailChunk } from './PartBreakdown.jsx';
+import { ColorChunk } from './PartBreakdown.jsx';
 import { POINTS_PER_QUESTION } from '../api/claude.js';
 import { getScoreStyle } from '../constants/scoring.js';
 import QuestionHeader from './QuestionHeader.jsx';
@@ -133,14 +133,6 @@ export default function QuestionCard({ index, exercise, attempt, evaluation, rev
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14, minWidth: 0 }}>
               {parts.map((p, j) => (
                 <ColorChunk key={j} part={p} />
-              ))}
-            </div>
-
-            {/* Detail chips */}
-            <p style={{ fontSize: 10.5, fontWeight: 700, color: C.t3, margin: '0 0 8px', letterSpacing: '.05em' }}>各チャンクの役割</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14, minWidth: 0 }}>
-              {parts.map((p, j) => (
-                <DetailChunk key={j} part={p} />
               ))}
             </div>
 

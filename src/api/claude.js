@@ -7,9 +7,11 @@ import { normalizePart } from '../utils/parts.js';
 const ENDPOINT = 'https://api.anthropic.com/v1/messages';
 const MODEL_GENERATE = 'claude-haiku-4-5-20251001';
 const MODEL_CHECK = 'claude-sonnet-4-5-20250929';
-const MAX_TOKENS_CHECK = 6144;
+const MAX_TOKENS_CHECK = 8192;
 const MAX_TOKENS_GENERATE = 8192;
 const CHECK_RETRIES = 2;
+/** Questions per grading API call (sequential batches). */
+export const CHECK_BATCH_SIZE = 2;
 
 /** Number of exercises generated and shown per session. */
 export const EXERCISES_PER_SET = 7;
@@ -296,13 +298,13 @@ export async function generateExercises(apiKey, stepInfo, n = EXERCISES_PER_SET,
 }
 
 /**
- * Evaluate user translation attempts for all exercises in bulk.
+ * Evaluate a single batch of translation attempts (one API call).
  *
  * @param {string} apiKey
  * @param {{ jp: string, en: string, attempt: string, parts?: object[], nuance?: string }[]} pairs
  * @returns {Promise<Evaluation[]>}
  */
-export async function checkAnswers(apiKey, pairs, { step } = {}) {
+async function checkAnswersBatch(apiKey, pairs, { step } = {}) {
   const { system, user } = buildCheckPrompt(pairs, { step });
   let lastError;
 
@@ -325,6 +327,36 @@ export async function checkAnswers(apiKey, pairs, { step } = {}) {
   }
 
   throw lastError;
+}
+
+/**
+ * Evaluate user translation attempts in sequential batches of CHECK_BATCH_SIZE.
+ * On failure, throws an error with `failedAtIndex` (0-based) for resume.
+ *
+ * @param {string} apiKey
+ * @param {{ jp: string, en: string, attempt: string, parts?: object[], nuance?: string }[]} pairs
+ * @param {{ step?: number, startIndex?: number, onBatchComplete?: (batchStart: number, results: Evaluation[]) => void }} [options]
+ * @returns {Promise<Evaluation[]>}
+ */
+export async function checkAnswers(apiKey, pairs, { step, startIndex = 0, onBatchComplete } = {}) {
+  const results = [];
+
+  for (let i = startIndex; i < pairs.length; i += CHECK_BATCH_SIZE) {
+    const batchPairs = pairs.slice(i, i + CHECK_BATCH_SIZE);
+    try {
+      const batchResults = await checkAnswersBatch(apiKey, batchPairs, { step });
+      batchResults.forEach((ev, j) => {
+        results[i + j] = ev;
+      });
+      onBatchComplete?.(i, batchResults);
+    } catch (e) {
+      const err = new Error(e.message);
+      err.failedAtIndex = i;
+      throw err;
+    }
+  }
+
+  return results;
 }
 
 const GENERIC_CONFUSABLE_WHY = 'この文の文脈では意味が合いません。';

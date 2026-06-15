@@ -23,9 +23,11 @@ export default function App() {
   const [exercisesByStep, setExercisesByStep] = useState({}); // { step: Exercise[] }
   const [attemptsByStep, setAttemptsByStep] = useState({});   // { step: { idx: string } }
   const [evaluationsByStep, setEvaluationsByStep] = useState({}); // { step: { idx: Evaluation } }
+  const [checkResumeFromByStep, setCheckResumeFromByStep] = useState({}); // { step: startIndex }
   const [revealedByStep, setRevealedByStep] = useState({});   // { step: boolean }
   const [isGenerating, setIsGenerating] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
+  const [gradingProgress, setGradingProgress] = useState(0);
   const [error, setError] = useState('');
   const [guideOpen, setGuideOpen] = useState(false);
   const [guideAnchor, setGuideAnchor] = useState(null);
@@ -36,8 +38,10 @@ export default function App() {
   const exercises = isPhrase ? [] : (exercisesByStep[step] || []);
   const attempts = isPhrase ? {} : (attemptsByStep[step] || {});
   const evaluations = isPhrase ? {} : (evaluationsByStep[step] || {});
+  const checkResumeFrom = isPhrase ? null : (checkResumeFromByStep[step] ?? null);
   const revealed = isPhrase ? false : (revealedByStep[step] || false);
   const showCreateButton = !isPhrase && (exercises.length === 0 || revealed);
+  const hasPartialCheck = !revealed && checkResumeFrom != null;
 
   // ── Step switch ─────────────────────────────────────────────────────────────
   const switchStep = (s) => {
@@ -47,6 +51,7 @@ export default function App() {
       setExercisesByStep((prev) => ({ ...prev, [s]: [] }));
       setAttemptsByStep((prev) => ({ ...prev, [s]: {} }));
       setEvaluationsByStep((prev) => ({ ...prev, [s]: {} }));
+      setCheckResumeFromByStep((prev) => ({ ...prev, [s]: null }));
       setRevealedByStep((prev) => ({ ...prev, [s]: false }));
     }
     document.getElementById(APP_SCROLL_ID)?.scrollTo({ top: 0 });
@@ -61,6 +66,7 @@ export default function App() {
       setExercisesByStep((prev) => ({ ...prev, [step]: generated }));
       setAttemptsByStep((prev) => ({ ...prev, [step]: {} }));
       setEvaluationsByStep((prev) => ({ ...prev, [step]: {} }));
+      setCheckResumeFromByStep((prev) => ({ ...prev, [step]: null }));
       setRevealedByStep((prev) => ({ ...prev, [step]: false }));
     } catch (e) {
       setError(`問題生成エラー: ${e.message}`);
@@ -69,10 +75,16 @@ export default function App() {
     }
   };
 
-  // ── Bulk answer check via Claude ─────────────────────────────────────────────
+  // ── Bulk answer check via Claude (2 questions per batch, resumable) ─────────
   const handleCheck = async () => {
+    const startIndex = checkResumeFrom ?? 0;
     setIsChecking(true);
+    setGradingProgress(startIndex);
     setError('');
+    if (startIndex === 0) {
+      setEvaluationsByStep((prev) => ({ ...prev, [step]: {} }));
+      setCheckResumeFromByStep((prev) => ({ ...prev, [step]: null }));
+    }
     try {
       const pairs = exercises.map((ex, i) => ({
         jp: ex.jp,
@@ -83,16 +95,28 @@ export default function App() {
         operationTag: ex.operationTag,
         thread: ex.thread,
       }));
-      const results = await checkAnswers(apiKey, pairs, { step });
-      const evalMap = {};
-      results.forEach((r, i) => { evalMap[i] = r; });
-      setEvaluationsByStep((prev) => ({ ...prev, [step]: evalMap }));
+      await checkAnswers(apiKey, pairs, {
+        step,
+        startIndex,
+        onBatchComplete: (batchStart, batchResults) => {
+          setGradingProgress(batchStart + batchResults.length);
+          setEvaluationsByStep((prev) => {
+            const current = { ...(prev[step] || {}) };
+            batchResults.forEach((r, j) => { current[batchStart + j] = r; });
+            return { ...prev, [step]: current };
+          });
+        },
+      });
+      setCheckResumeFromByStep((prev) => ({ ...prev, [step]: null }));
       setRevealedByStep((prev) => ({ ...prev, [step]: true }));
       document.getElementById(APP_SCROLL_ID)?.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (e) {
-      setError(`採点エラー: ${e.message}`);
+      const failedAt = e.failedAtIndex ?? startIndex;
+      setCheckResumeFromByStep((prev) => ({ ...prev, [step]: failedAt }));
+      setError(`採点エラー（Q${failedAt + 1}〜から再開できます）: ${e.message}`);
     } finally {
       setIsChecking(false);
+      setGradingProgress(0);
     }
   };
 
@@ -217,7 +241,7 @@ export default function App() {
                 exercise={ex}
                 attempt={attempts[i] || ''}
                 evaluation={evaluations[i] || null}
-                revealed={revealed}
+                revealed={revealed || evaluations[i] != null}
                 onAttemptChange={(v) => setAttemptsByStep((a) => ({ ...a, [step]: { ...a[step], [i]: v } }))}
                 onOpenGuideChapter={(anchor) => { setGuideAnchor(anchor); setGuideOpen(true); }}
               />
@@ -233,12 +257,21 @@ export default function App() {
                 }}>
                   採点基準を見る
                 </button>
+                {hasPartialCheck && (
+                  <p style={{ fontSize: 12, color: C.t2, margin: '0 0 8px', textAlign: 'center' }}>
+                    Q{checkResumeFrom + 1}〜の採点が未完了です。ボタンで続きから再開できます。
+                  </p>
+                )}
                 <button onClick={handleCheck} disabled={isChecking} style={{
                 width: '100%', padding: 15, borderRadius: 14, border: 'none',
                 cursor: isChecking ? 'not-allowed' : 'pointer',
                 background: C.ink, color: '#fff', fontSize: 15, fontWeight: 700,
                 opacity: isChecking ? 0.7 : 1, fontFamily: 'inherit', marginTop: 4 }}>
-                {isChecking ? 'Claude が採点中…' : `まとめて答え合わせ（${exercises.length}問）`}
+                {isChecking
+                  ? 'Claude が採点中…'
+                  : hasPartialCheck
+                    ? `続きから答え合わせ（Q${checkResumeFrom + 1}〜${exercises.length}問）`
+                    : `まとめて答え合わせ（${exercises.length}問）`}
               </button>
               </>
             ) : exercises.length > 0 && revealed ? (
@@ -273,7 +306,12 @@ export default function App() {
         initialAnchor={guideAnchor}
       />
       <ScoringCriteriaModal open={scoringOpen} onClose={() => setScoringOpen(false)} />
-      {isChecking && <GradingOverlay questionCount={exercises.length} />}
+      {isChecking && (
+        <GradingOverlay
+          questionCount={exercises.length}
+          gradedCount={gradingProgress}
+        />
+      )}
     </div>
   );
 }

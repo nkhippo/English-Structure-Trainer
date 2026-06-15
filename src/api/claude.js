@@ -198,7 +198,14 @@ function parseJsonArray(text) {
 
 // ── Core fetch wrapper ───────────────────────────────────────────────────────
 
-async function callClaude(apiKey, system, userMessage, { prefill, maxTokens = MAX_TOKENS_CHECK, model = MODEL_GENERATE } = {}) {
+function logApiDebug(entry) {
+  console.log('[API Debug]', {
+    at: new Date().toISOString(),
+    ...entry,
+  });
+}
+
+async function callClaude(apiKey, system, userMessage, { prefill, debug, maxTokens = MAX_TOKENS_CHECK, model = MODEL_GENERATE } = {}) {
   const messages = [{ role: 'user', content: userMessage }];
   if (prefill) {
     messages.push({ role: 'assistant', content: prefill });
@@ -229,7 +236,21 @@ async function callClaude(apiKey, system, userMessage, { prefill, maxTokens = MA
 
   const data = await res.json();
   const text = data.content?.[0]?.text ?? '';
-  return prefill ? prefill + text : text;
+  const fullText = prefill ? prefill + text : text;
+
+  if (debug) {
+    logApiDebug({
+      operation: debug.operation,
+      step: debug.step ?? null,
+      input_tokens: data.usage?.input_tokens ?? null,
+      output_tokens: data.usage?.output_tokens ?? null,
+      stop_reason: data.stop_reason ?? null,
+      max_tokens: maxTokens,
+      response_chars: fullText.length,
+    });
+  }
+
+  return fullText;
 }
 
 function normalizeExercise(ex) {
@@ -259,6 +280,7 @@ export async function generateExercises(apiKey, stepInfo, n = EXERCISES_PER_SET,
   const raw = await callClaude(apiKey, system, user, {
     prefill: '[',
     maxTokens: MAX_TOKENS_GENERATE,
+    debug: { operation: 'generate', step: step ?? null },
   });
   const exercises = parseJsonArray(raw);
 
@@ -289,6 +311,7 @@ export async function checkAnswers(apiKey, pairs, { step } = {}) {
       const raw = await callClaude(apiKey, system, user, {
         prefill: '[',
         model: MODEL_CHECK,
+        debug: { operation: 'check', step: step ?? null },
       });
       const evaluations = parseJsonArray(raw);
 
@@ -353,6 +376,7 @@ async function enrichPhraseFeedback(apiKey, questions, levelId) {
   const raw = await callClaude(apiKey, system, user, {
     prefill: '[',
     maxTokens: MAX_TOKENS_GENERATE,
+    debug: { operation: 'phrase_feedback_enrich', step: `phrase-${levelId}` },
   });
   const enriched = parseJsonArray(raw);
 
@@ -467,6 +491,7 @@ export async function generatePhraseQuestions(apiKey, levelId, targets) {
   const raw = await callClaude(apiKey, system, user, {
     prefill: '[',
     maxTokens: MAX_TOKENS_GENERATE,
+    debug: { operation: 'phrase_generate', step: `phrase-${levelId}` },
   });
   const questions = parseJsonArray(raw);
 

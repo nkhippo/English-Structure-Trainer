@@ -12,11 +12,7 @@ export default function VocabHints({ hints, revealed = false }) {
     setOpen(false);
   }, [hints]);
 
-  useEffect(() => {
-    if (revealed) setOpen(false);
-  }, [revealed]);
-
-  if (!hints?.length) return null;
+  if (!hints?.length || revealed) return null;
 
   return (
     <div style={{ marginBottom: 10 }}>

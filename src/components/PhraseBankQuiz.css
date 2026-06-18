@@ -163,11 +163,3 @@
   color: #6b6862;
   vertical-align: baseline;
 }
-
-@media (max-width: 767px) {
-  .phrase-feedback-body {
-    max-height: 42vh;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-}

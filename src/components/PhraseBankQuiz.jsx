@@ -26,6 +26,21 @@ function splitPhraseBlank(en) {
   return { before: en.slice(0, idx).replace(/_+$/, ''), after: en.slice(idx + 3) };
 }
 
+function ConfusableNote({ phrase, why, sample }) {
+  return (
+    <div style={{ margin: '0 0 8px' }}>
+      <p style={{ margin: '0 0 2px', fontWeight: 600, color: C.t1 }}>{phrase}</p>
+      <p style={{ margin: 0 }}>{why}</p>
+      {sample && (
+        <p className="phrase-sample-sentence">
+          <span className="phrase-sample-label">例</span>
+          {sample}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function FeedbackDetail({ question, selected, isCorrect, onOpenStep7 }) {
   const selectedKey = selected.trim().toLowerCase();
   const selectedConfusable = question.confusables?.find(
@@ -47,6 +62,12 @@ function FeedbackDetail({ question, selected, isCorrect, onOpenStep7 }) {
             ? (question.correctFit || question.meaning)
             : (selectedConfusable?.why ?? 'この文脈では正解になりません。')}
         </p>
+        {!isCorrect && selectedConfusable?.sample && (
+          <p className="phrase-sample-sentence">
+            <span className="phrase-sample-label">例</span>
+            {selectedConfusable.sample}
+          </p>
+        )}
       </div>
 
       {isCorrect && question.meaning && question.correctFit && (
@@ -65,11 +86,8 @@ function FeedbackDetail({ question, selected, isCorrect, onOpenStep7 }) {
       {(isCorrect ? question.confusables : otherConfusables)?.length > 0 && (
         <div className="phrase-other-choices">
           <p className="phrase-other-label">{isCorrect ? 'ほかの選択肢' : 'ほかの誤答'}</p>
-          {(isCorrect ? question.confusables : otherConfusables).map(({ phrase, why }) => (
-            <div key={phrase} style={{ margin: '0 0 8px' }}>
-              <p style={{ margin: '0 0 2px', fontWeight: 600, color: C.t1 }}>{phrase}</p>
-              <p style={{ margin: 0 }}>{why}</p>
-            </div>
+          {(isCorrect ? question.confusables : otherConfusables).map(({ phrase, why, sample }) => (
+            <ConfusableNote key={phrase} phrase={phrase} why={why} sample={sample} />
           ))}
         </div>
       )}

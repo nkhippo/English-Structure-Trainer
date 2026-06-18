@@ -9,6 +9,7 @@ const MODEL_GENERATE = 'claude-haiku-4-5-20251001';
 const MODEL_CHECK = 'claude-sonnet-4-5-20250929';
 const MAX_TOKENS_CHECK = 8192;
 const MAX_TOKENS_GENERATE = 8192;
+const MAX_TOKENS_PHRASE_ENRICH = 12288;
 const CHECK_RETRIES = 2;
 /** Questions per grading API call (sequential batches). */
 export const CHECK_BATCH_SIZE = 1;
@@ -380,6 +381,14 @@ function getWrongChoices(question) {
   );
 }
 
+function normalizeConfusable(c) {
+  return {
+    phrase: String(c.phrase).trim(),
+    why: String(c.why).trim(),
+    sample: String(c.sample || '').trim(),
+  };
+}
+
 function alignConfusables(question, wrongChoices) {
   const confusablesByPhrase = new Map(
     (question.confusables ?? []).map((c) => [c.phrase.toLowerCase(), c]),
@@ -387,9 +396,9 @@ function alignConfusables(question, wrongChoices) {
   return wrongChoices.map((phrase) => {
     const existing = confusablesByPhrase.get(phrase.toLowerCase());
     if (existing && !isWeakConfusableWhy(existing.why)) {
-      return { phrase, why: existing.why };
+      return normalizeConfusable({ phrase, why: existing.why, sample: existing.sample });
     }
-    return { phrase, why: existing?.why ?? GENERIC_CONFUSABLE_WHY };
+    return normalizeConfusable({ phrase, why: existing?.why ?? GENERIC_CONFUSABLE_WHY, sample: existing?.sample });
   });
 }
 
@@ -407,7 +416,7 @@ async function enrichPhraseFeedback(apiKey, questions, levelId) {
   const { system, user } = buildPhraseFeedbackEnrichPrompt(items);
   const raw = await callClaude(apiKey, system, user, {
     prefill: '[',
-    maxTokens: MAX_TOKENS_GENERATE,
+    maxTokens: MAX_TOKENS_PHRASE_ENRICH,
     debug: { operation: 'phrase_feedback_enrich', step: `phrase-${levelId}` },
   });
   const enriched = parseJsonArray(raw);
@@ -421,7 +430,7 @@ async function enrichPhraseFeedback(apiKey, questions, levelId) {
     const confusables = Array.isArray(entry?.confusables)
       ? entry.confusables
           .filter((c) => c?.phrase && c?.why)
-          .map((c) => ({ phrase: String(c.phrase).trim(), why: String(c.why).trim() }))
+          .map((c) => normalizeConfusable(c))
       : [];
     byIndex.set(i, {
       correctFit: String(entry?.correctFit || '').trim(),
@@ -438,7 +447,11 @@ function mergeEnrichedConfusables(aligned, enrichedList) {
   return aligned.map((c) => {
     const enriched = enrichedByPhrase.get(c.phrase.toLowerCase());
     if (enriched && !isWeakConfusableWhy(enriched.why)) {
-      return { phrase: c.phrase, why: enriched.why };
+      return normalizeConfusable({
+        phrase: c.phrase,
+        why: enriched.why,
+        sample: enriched.sample || c.sample,
+      });
     }
     return c;
   });
@@ -502,7 +515,7 @@ function normalizePhraseQuestion(q, targets) {
       ? q.confusables
           .filter((c) => c?.phrase && c?.why)
           .slice(0, 2)
-          .map((c) => ({ phrase: String(c.phrase).trim(), why: String(c.why).trim() }))
+          .map((c) => normalizeConfusable(c))
       : [],
     category: target.category,
     cefr: target.cefr,

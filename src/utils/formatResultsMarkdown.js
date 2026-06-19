@@ -5,7 +5,7 @@ import { POINTS_PER_QUESTION } from '../api/claude.js';
  *   step: number,
  *   stepLabel: string,
  *   stepSub: string,
- *   exercises: { jp: string, en: string, nuance?: string }[],
+ *   exercises: { jp: string, en: string, enNative?: string, nuance?: string, nuanceNative?: string }[],
  *   attempts: Record<number, string>,
  *   evaluations: Record<number, { score: number, correct: boolean, feedback: string }>,
  * }} params
@@ -48,7 +48,14 @@ export function formatResultsMarkdown({
       lines.push('**あなたの解答:** （未入力）', '');
     }
 
-    lines.push(`**模範解答:** ${ex.en}`, '');
+    lines.push(`**模範解答（文法・構造）:** ${ex.en}`, '');
+
+    if (ex.enNative) {
+      lines.push(`**ネイティブらしい表現:** ${ex.enNative}`, '');
+      if (ex.nuanceNative) {
+        lines.push(ex.nuanceNative, '');
+      }
+    }
 
     if (ev) {
       lines.push(`**採点:** ${ev.score} / ${POINTS_PER_QUESTION}点（${status}）`, '');
@@ -56,7 +63,7 @@ export function formatResultsMarkdown({
     }
 
     if (ex.nuance) {
-      lines.push('### 模範解答のポイント', '', ex.nuance, '');
+      lines.push('### 模範解答のポイント（文法・構造）', '', ex.nuance, '');
     }
 
     lines.push('---', '');

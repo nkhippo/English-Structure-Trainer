@@ -13,7 +13,7 @@ const C = { card: '#FFFFFF', page: '#FAF9F6', line: '#EAE8E1', t1: '#1C1B19', t2
 /**
  * @param {{
  *   index: number,
- *   exercise: { jp: string, en: string, parts: object[], nuance?: string, vocabHints?: { jp: string, en: string }[] },
+ *   exercise: { jp: string, en: string, parts: object[], nuance?: string, enNative?: string, nuanceNative?: string, vocabHints?: { jp: string, en: string }[] },
  *   attempt: string,
  *   evaluation: { score: number, correct: boolean, feedback: string, correction: string|null } | null,
  *   revealed: boolean,
@@ -91,11 +91,21 @@ export default function QuestionCard({ index, exercise, attempt, evaluation, rev
               </div>
             )}
 
-            {/* Model answer (100-point reference) */}
+            {/* Model answer (100-point reference — grammar/structure) */}
             <div style={{ marginBottom: 12 }}>
-              <p style={{ fontSize: 10.5, fontWeight: 700, color: C.t3, margin: '0 0 5px', letterSpacing: '.05em' }}>模範解答</p>
+              <p style={{ fontSize: 10.5, fontWeight: 700, color: C.t3, margin: '0 0 5px', letterSpacing: '.05em' }}>模範解答（文法・構造）</p>
               <div style={{ background: C.page, borderRadius: 10, padding: '8px 12px', fontSize: 15, color: C.t2, lineHeight: 1.5 }}>{en}</div>
             </div>
+
+            {exercise.enNative && (
+              <div style={{ marginBottom: 12 }}>
+                <p style={{ fontSize: 10.5, fontWeight: 700, color: C.t3, margin: '0 0 5px', letterSpacing: '.05em' }}>ネイティブらしい表現</p>
+                <div style={{ background: '#F5F8FC', borderRadius: 10, padding: '8px 12px', fontSize: 15, color: C.t2, lineHeight: 1.5, border: '1px solid #E2EAF2' }}>{exercise.enNative}</div>
+                {exercise.nuanceNative && (
+                  <p style={{ fontSize: 12, color: C.t2, margin: '6px 0 0', lineHeight: 1.6 }}>{exercise.nuanceNative}</p>
+                )}
+              </div>
+            )}
 
             {/* AI evaluation */}
             {evaluation && (() => {
@@ -138,7 +148,7 @@ export default function QuestionCard({ index, exercise, attempt, evaluation, rev
 
             {exercise.nuance && (
               <div style={{ marginBottom: 14, padding: '10px 14px', borderRadius: 10, background: C.page, border: `1px solid ${C.line}` }}>
-                <p style={{ fontSize: 10.5, fontWeight: 700, color: C.t3, margin: '0 0 4px', letterSpacing: '.05em' }}>模範解答のポイント</p>
+                <p style={{ fontSize: 10.5, fontWeight: 700, color: C.t3, margin: '0 0 4px', letterSpacing: '.05em' }}>模範解答のポイント（文法・構造）</p>
                 <p style={{ fontSize: 12, color: C.t1, margin: 0, lineHeight: 1.6 }}>{exercise.nuance}</p>
                 {exercise.operationTag && onOpenGuideChapter && (
                   <button

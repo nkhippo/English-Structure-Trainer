@@ -262,6 +262,8 @@ function normalizeExercise(ex) {
     parts: (ex.parts || []).map(normalizePart).filter(Boolean),
     vocabHints: Array.isArray(ex.vocabHints) ? ex.vocabHints : [],
     nuance: typeof ex.nuance === 'string' ? ex.nuance : '',
+    enNative: typeof ex.enNative === 'string' ? ex.enNative.trim() : '',
+    nuanceNative: typeof ex.nuanceNative === 'string' ? ex.nuanceNative : '',
     operationTag: typeof ex.operationTag === 'string' ? ex.operationTag : undefined,
     cefr: typeof ex.cefr === 'string' ? ex.cefr : undefined,
     thread: typeof ex.thread === 'string' ? ex.thread : undefined,

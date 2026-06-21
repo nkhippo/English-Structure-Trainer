@@ -71,6 +71,8 @@ export default function QuestionCard({ index, exercise, attempt, evaluation, rev
             value={attempt}
             onChange={(e) => onAttemptChange(e.target.value.replace(/[\r\n]+/g, ' '))}
             onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
+            spellCheck
+            lang="en"
             placeholder="英訳を入力…"
             rows={2}
             wrap="soft"

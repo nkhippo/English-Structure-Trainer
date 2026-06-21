@@ -15,6 +15,8 @@ import { getScoreStyle } from './constants/scoring.js';
 import { APP_SCROLL_ID } from './hooks/usePinnedSectionHeader.js';
 import { formatResultsMarkdown } from './utils/formatResultsMarkdown.js';
 import { getFollowUpCount, loadReviewHistory, saveReviewHistory } from './utils/reviewHistory.js';
+import { parseReviewMarkdown } from './utils/parseReviewMarkdown.js';
+import ReviewMarkdownPanel from './components/ReviewMarkdownPanel.jsx';
 
 const C = { page: '#FAF9F6', card: '#FFFFFF', line: '#EAE8E1', t1: '#1C1B19', t2: '#6B6862', t3: '#9A968D', ink: '#1C1B19' };
 
@@ -34,6 +36,7 @@ export default function App() {
   const [guideAnchor, setGuideAnchor] = useState(null);
   const [scoringOpen, setScoringOpen] = useState(false);
   const [historyVersion, setHistoryVersion] = useState(0);
+  const [markdownFileError, setMarkdownFileError] = useState('');
 
   const isPhrase = step === 'phrase';
   const sd = isPhrase ? null : STEPS[step];
@@ -65,12 +68,13 @@ export default function App() {
     ? getFollowUpCount(storedReview.questionCount)
     : 0;
   const showSessionFollowUp = sessionFollowUpCount > 0;
-  const showStoredFollowUp = storedFollowUpCount > 0;
+  const reviewStepMismatch = storedReview?.sourceStep != null && storedReview.sourceStep !== step;
 
   // ── Step switch ─────────────────────────────────────────────────────────────
   const switchStep = (s) => {
     setStep(s);
     setError('');
+    setMarkdownFileError('');
     if (s !== 'phrase') {
       setExercisesByStep((prev) => ({ ...prev, [s]: [] }));
       setAttemptsByStep((prev) => ({ ...prev, [s]: {} }));
@@ -125,6 +129,24 @@ export default function App() {
   const handleStoredFollowUp = () => {
     if (!storedReview) return;
     handleFollowUpGenerate(storedFollowUpCount, storedReview.markdown);
+  };
+
+  const handleMarkdownFile = async (file) => {
+    setMarkdownFileError('');
+    try {
+      const text = await file.text();
+      const parsed = parseReviewMarkdown(text);
+      saveReviewHistory(step, {
+        markdown: parsed.markdown,
+        questionCount: parsed.questionCount,
+        totalScore: parsed.totalScore ?? 0,
+        maxScore: parsed.maxScore ?? parsed.questionCount * POINTS_PER_QUESTION,
+        sourceStep: parsed.step,
+      });
+      setHistoryVersion((v) => v + 1);
+    } catch (e) {
+      setMarkdownFileError(e.message || 'ファイルの読み込みに失敗しました');
+    }
   };
 
   // ── Bulk answer check via Claude (1 question per batch, resumable) ─────────
@@ -185,6 +207,7 @@ export default function App() {
         questionCount: exercises.length,
         totalScore: total,
         maxScore: exercises.length * POINTS_PER_QUESTION,
+        sourceStep: step,
       });
       setHistoryVersion((v) => v + 1);
       document.getElementById(APP_SCROLL_ID)?.scrollTo({ top: 0, behavior: 'smooth' });
@@ -271,16 +294,27 @@ export default function App() {
                   {isGenerating ? '問題を作成中…' : '問題を作成する'}
                 </button>
               )}
-              {exercises.length === 0 && showStoredFollowUp && (
-                <button type="button" onClick={handleStoredFollowUp} disabled={isGenerating} style={{
+              {revealed && showSessionFollowUp && (
+                <button type="button" onClick={handleSessionFollowUp} disabled={isGenerating} style={{
                   width: '100%', padding: 14, borderRadius: 12, marginTop: 8,
                   border: `1px solid ${C.line}`, background: C.card, color: C.t1,
                   fontSize: 15, fontWeight: 700,
                   cursor: isGenerating ? 'not-allowed' : 'pointer',
                   opacity: isGenerating ? 0.7 : 1, fontFamily: 'inherit',
                 }}>
-                  {isGenerating ? '弱点克服問題を作成中…' : `前回の結果から弱点克服（${storedFollowUpCount}問）`}
+                  {isGenerating ? '弱点克服問題を作成中…' : `弱点に合わせて再出題（${sessionFollowUpCount}問）`}
                 </button>
+              )}
+              {exercises.length === 0 && (
+                <ReviewMarkdownPanel
+                  review={storedReview}
+                  followUpCount={storedFollowUpCount}
+                  stepMismatch={reviewStepMismatch}
+                  onFileSelect={handleMarkdownFile}
+                  onFollowUp={handleStoredFollowUp}
+                  isGenerating={isGenerating}
+                  fileError={markdownFileError}
+                />
               )}
             </div>
 

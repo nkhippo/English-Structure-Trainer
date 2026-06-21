@@ -119,7 +119,7 @@ Step 7 採点の補足（必須）:
 - feedback で模範解答の妥当性を説明するとき、可能なら「糸1（助動詞前置）」または「糸2（空所＋移動）」のどちらの再利用かに1行触れる`;
 }
 
-function buildFollowUpReviewSection(reviewMarkdown, n) {
+function buildFollowUpReviewSection(reviewMarkdown, n, step) {
   return `
 
 前回の答え合わせ結果（Markdown）:
@@ -128,10 +128,18 @@ ${reviewMarkdown}
 ---
 
 弱点克服出題の指示（必須）:
-- 上記の答え合わせ結果を分析し、**低得点・要修正の問** から読み取れる誤り傾向（時制・語順・関係詞・準動詞の役割など）を特定する
-- 今回の ${n} 問は、その弱点を **集中的に克服できる** 問題を中心に設計する
+- 上記の答え合わせ結果を分析し、**低得点・要修正の問** から学習者の弱点を特定する
+- **軽微なスペルミス・タイポ・単語の綴り違いは弱点分析から除外する**（8〜9点でスペルだけが問題だった問は、正解扱いとして扱う）
+- 弱点は **大枠の概念・構造の理解不足** に焦点を当てる。例:
+  - 時制・相・態・助動詞の選択ミス（Step 3 相当）
+  - 不定詞・動名詞・分詞・前置詞句の X/Y/Z 役割の取り違え（Step 4 相当）
+  - 後置修飾・関係詞節・what節の語順（Step 5 相当）
+  - 副詞節・名詞節・等位接続・ネスト構造（Step 6 相当）
+  - 比較・仮定法・倒置など（Step 7 相当）
+- 現在の Step ${step} にとどまらず、**フィードバックから読み取れる概念レベルの弱点があれば Step を跨いで** 出題してよい
+- 今回の ${n} 問は、特定した **概念・構造の弱点** を集中的に克服できる問題を中心に設計する
 - 前回と同じ日本語文・同じ模範解答は出題しない
-- 前回正解（8点以上）だった文法パターンは復習として1問程度にとどめ、苦手パターンを厚く出題する
+- 前回正解（8点以上、またはスペルミスのみの軽微な減点）だった文法パターンは復習として1問程度にとどめ、概念理解の苦手パターンを厚く出題する
 - テーマ・場面・主語は前回と重ならないよう新しい題材を使う`;
 }
 
@@ -143,7 +151,7 @@ export function buildGeneratePrompt(stepInfo, n, { step, reviewMarkdown } = {}) 
     : step === 7
       ? buildStep7GenerateExtra(n, getLastStep7TagSet())
       : '';
-  const followUpSection = reviewMarkdown ? buildFollowUpReviewSection(reviewMarkdown, n) : '';
+  const followUpSection = reviewMarkdown ? buildFollowUpReviewSection(reviewMarkdown, n, step) : '';
 
   return {
     system: `あなたは英語教育の専門家です。

@@ -29,7 +29,10 @@ export default function App() {
   const [evaluationsByStep, setEvaluationsByStep] = useState({}); // { step: { idx: Evaluation } }
   const [checkResumeFromByStep, setCheckResumeFromByStep] = useState({}); // { step: startIndex }
   const [revealedByStep, setRevealedByStep] = useState({});   // { step: boolean }
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatingMode, setGeneratingMode] = useState(null); // null | 'new' | 'followUp'
+  const isGeneratingNew = generatingMode === 'new';
+  const isGeneratingFollowUp = generatingMode === 'followUp';
+  const isGenerating = generatingMode != null;
   const [isChecking, setIsChecking] = useState(false);
   const [gradingProgress, setGradingProgress] = useState(0);
   const [error, setError] = useState('');
@@ -38,6 +41,7 @@ export default function App() {
   const [scoringOpen, setScoringOpen] = useState(false);
   const [historyVersion, setHistoryVersion] = useState(0);
   const [markdownFileError, setMarkdownFileError] = useState('');
+  const [markdownFileSuccess, setMarkdownFileSuccess] = useState('');
   const [enNativeLoadingKey, setEnNativeLoadingKey] = useState(null);
 
   const isPhrase = step === 'phrase';
@@ -70,13 +74,13 @@ export default function App() {
     ? getFollowUpCount(storedReview.questionCount)
     : 0;
   const showSessionFollowUp = sessionFollowUpCount > 0;
-  const reviewStepMismatch = storedReview?.sourceStep != null && storedReview.sourceStep !== step;
 
   // ── Step switch ─────────────────────────────────────────────────────────────
   const switchStep = (s) => {
     setStep(s);
     setError('');
     setMarkdownFileError('');
+    setMarkdownFileSuccess('');
     if (s !== 'phrase') {
       setExercisesByStep((prev) => ({ ...prev, [s]: [] }));
       setAttemptsByStep((prev) => ({ ...prev, [s]: {} }));
@@ -96,7 +100,7 @@ export default function App() {
   };
 
   const handleGenerate = async () => {
-    setIsGenerating(true);
+    setGeneratingMode('new');
     setError('');
     try {
       const generated = await generateExercises(apiKey, sd, EXERCISES_PER_SET, { step });
@@ -105,12 +109,12 @@ export default function App() {
     } catch (e) {
       setError(`問題生成エラー: ${e.message}`);
     } finally {
-      setIsGenerating(false);
+      setGeneratingMode(null);
     }
   };
 
   const handleFollowUpGenerate = async (count, reviewMarkdown, coreTagSummary = '') => {
-    setIsGenerating(true);
+    setGeneratingMode('followUp');
     setError('');
     try {
       const generated = await generateExercises(apiKey, sd, count, { step, reviewMarkdown, coreTagSummary });
@@ -120,7 +124,7 @@ export default function App() {
     } catch (e) {
       setError(`弱点克服問題の生成エラー: ${e.message}`);
     } finally {
-      setIsGenerating(false);
+      setGeneratingMode(null);
     }
   };
 
@@ -140,9 +144,16 @@ export default function App() {
 
   const handleMarkdownFile = async (file) => {
     setMarkdownFileError('');
+    setMarkdownFileSuccess('');
     try {
       const text = await file.text();
       const parsed = parseReviewMarkdown(text);
+      if (parsed.step == null || parsed.step < 3 || parsed.step > 7) {
+        throw new Error('ファイルから Step（3〜7）を読み取れませんでした');
+      }
+      if (parsed.step !== step) {
+        throw new Error(`このファイルは Step ${parsed.step} の結果です。Step ${parsed.step} タブで読み込んでください`);
+      }
       saveReviewHistory(step, {
         markdown: parsed.markdown,
         questionCount: parsed.questionCount,
@@ -152,6 +163,7 @@ export default function App() {
         coreTagSummary: parsed.coreTagSummary || '',
       });
       setHistoryVersion((v) => v + 1);
+      setMarkdownFileSuccess('読み込みました。この Step の最新結果として保存しました');
     } catch (e) {
       setMarkdownFileError(e.message || 'ファイルの読み込みに失敗しました');
     }
@@ -321,7 +333,7 @@ export default function App() {
                   cursor: isGenerating ? 'not-allowed' : 'pointer',
                   opacity: isGenerating ? 0.7 : 1, fontFamily: 'inherit',
                 }}>
-                  {isGenerating ? '問題を作成中…' : '問題を作成する'}
+                  {isGeneratingNew ? '問題を作成中…' : '問題を作成する'}
                 </button>
               )}
               {revealed && showSessionFollowUp && (
@@ -332,18 +344,19 @@ export default function App() {
                   cursor: isGenerating ? 'not-allowed' : 'pointer',
                   opacity: isGenerating ? 0.7 : 1, fontFamily: 'inherit',
                 }}>
-                  {isGenerating ? '弱点克服問題を作成中…' : `弱点に合わせて再出題（${sessionFollowUpCount}問）`}
+                  {isGeneratingFollowUp ? '弱点克服問題を作成中…' : `弱点に合わせて再出題（${sessionFollowUpCount}問）`}
                 </button>
               )}
               {exercises.length === 0 && (
                 <ReviewMarkdownPanel
                   review={storedReview}
                   followUpCount={storedFollowUpCount}
-                  stepMismatch={reviewStepMismatch}
                   onFileSelect={handleMarkdownFile}
                   onFollowUp={handleStoredFollowUp}
-                  isGenerating={isGenerating}
+                  isGeneratingNew={isGeneratingNew}
+                  isGeneratingFollowUp={isGeneratingFollowUp}
                   fileError={markdownFileError}
+                  fileSuccess={markdownFileSuccess}
                 />
               )}
             </div>
@@ -449,7 +462,7 @@ export default function App() {
                     cursor: isGenerating ? 'not-allowed' : 'pointer',
                     opacity: isGenerating ? 0.7 : 1, fontFamily: 'inherit',
                   }}>
-                    {isGenerating ? '弱点克服問題を作成中…' : `弱点に合わせて再出題（${sessionFollowUpCount}問）`}
+                    {isGeneratingFollowUp ? '弱点克服問題を作成中…' : `弱点に合わせて再出題（${sessionFollowUpCount}問）`}
                   </button>
                 )}
               </>

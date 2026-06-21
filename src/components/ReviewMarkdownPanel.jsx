@@ -6,21 +6,23 @@ const C = { card: '#FFFFFF', line: '#EAE8E1', t1: '#1C1B19', t2: '#6B6862', t3: 
  * @param {{
  *   review: { questionCount: number, totalScore?: number | null, maxScore?: number | null, savedAt?: string } | null,
  *   followUpCount: number,
- *   stepMismatch: boolean,
  *   onFileSelect: (file: File) => void,
  *   onFollowUp: () => void,
- *   isGenerating: boolean,
+ *   isGeneratingNew: boolean,
+ *   isGeneratingFollowUp: boolean,
  *   fileError: string,
+ *   fileSuccess: string,
  * }} props
  */
 export default function ReviewMarkdownPanel({
   review,
   followUpCount,
-  stepMismatch,
   onFileSelect,
   onFollowUp,
-  isGenerating,
+  isGeneratingNew,
+  isGeneratingFollowUp,
   fileError,
+  fileSuccess,
 }) {
   const inputRef = useRef(null);
 
@@ -59,7 +61,7 @@ export default function ReviewMarkdownPanel({
       <button
         type="button"
         onClick={() => inputRef.current?.click()}
-        disabled={isGenerating}
+        disabled={isGeneratingNew || isGeneratingFollowUp}
         style={{
           width: '100%',
           padding: '10px 12px',
@@ -69,9 +71,9 @@ export default function ReviewMarkdownPanel({
           color: C.t1,
           fontSize: 13,
           fontWeight: 600,
-          cursor: isGenerating ? 'not-allowed' : 'pointer',
+          cursor: isGeneratingNew || isGeneratingFollowUp ? 'not-allowed' : 'pointer',
           fontFamily: 'inherit',
-          opacity: isGenerating ? 0.7 : 1,
+          opacity: isGeneratingNew || isGeneratingFollowUp ? 0.7 : 1,
         }}
       >
         Markdownファイルを選ぶ
@@ -79,6 +81,9 @@ export default function ReviewMarkdownPanel({
 
       {fileError && (
         <p style={{ fontSize: 12, color: '#C0392B', margin: '8px 0 0' }}>{fileError}</p>
+      )}
+      {fileSuccess && (
+        <p style={{ fontSize: 12, color: '#047857', margin: '8px 0 0' }}>{fileSuccess}</p>
       )}
 
       {review && (
@@ -100,11 +105,6 @@ export default function ReviewMarkdownPanel({
           {savedLabel && (
             <p style={{ margin: '4px 0 0', color: C.t3 }}>保存: {savedLabel}</p>
           )}
-          {stepMismatch && (
-            <p style={{ margin: '6px 0 0', color: '#B45309' }}>
-              ファイルの Step と現在のタブが異なります。内容は参考にして出題します。
-            </p>
-          )}
         </div>
       )}
 
@@ -112,7 +112,7 @@ export default function ReviewMarkdownPanel({
         <button
           type="button"
           onClick={onFollowUp}
-          disabled={isGenerating}
+          disabled={isGeneratingNew || isGeneratingFollowUp}
           style={{
             width: '100%',
             padding: 14,
@@ -123,12 +123,12 @@ export default function ReviewMarkdownPanel({
             color: C.t1,
             fontSize: 15,
             fontWeight: 700,
-            cursor: isGenerating ? 'not-allowed' : 'pointer',
-            opacity: isGenerating ? 0.7 : 1,
+            cursor: isGeneratingNew || isGeneratingFollowUp ? 'not-allowed' : 'pointer',
+            opacity: isGeneratingNew || isGeneratingFollowUp ? 0.7 : 1,
             fontFamily: 'inherit',
           }}
         >
-          {isGenerating ? '弱点克服問題を作成中…' : `弱点克服問題を作成（${followUpCount}問）`}
+          {isGeneratingFollowUp ? '弱点克服問題を作成中…' : `弱点克服問題を作成（${followUpCount}問）`}
         </button>
       )}
 

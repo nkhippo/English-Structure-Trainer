@@ -19,6 +19,7 @@ export function loadReviewHistory(step) {
     if (!raw) return null;
     const data = JSON.parse(raw);
     if (!data?.markdown || !data?.questionCount) return null;
+    if (data.sourceStep != null && data.sourceStep !== step) return null;
     return data;
   } catch {
     return null;

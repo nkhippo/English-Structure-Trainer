@@ -280,8 +280,8 @@ function normalizeExercise(ex) {
  * @param {number} n  Number of exercises to generate (default EXERCISES_PER_SET)
  * @returns {Promise<Exercise[]>}
  */
-export async function generateExercises(apiKey, stepInfo, n = EXERCISES_PER_SET, { step } = {}) {
-  const { system, user } = buildGeneratePrompt(stepInfo, n, { step });
+export async function generateExercises(apiKey, stepInfo, n = EXERCISES_PER_SET, { step, reviewMarkdown } = {}) {
+  const { system, user } = buildGeneratePrompt(stepInfo, n, { step, reviewMarkdown });
   const raw = await callClaude(apiKey, system, user, {
     prefill: '[',
     maxTokens: MAX_TOKENS_GENERATE,

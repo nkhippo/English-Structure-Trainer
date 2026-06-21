@@ -119,7 +119,23 @@ Step 7 採点の補足（必須）:
 - feedback で模範解答の妥当性を説明するとき、可能なら「糸1（助動詞前置）」または「糸2（空所＋移動）」のどちらの再利用かに1行触れる`;
 }
 
-export function buildGeneratePrompt(stepInfo, n, { step } = {}) {
+function buildFollowUpReviewSection(reviewMarkdown, n) {
+  return `
+
+前回の答え合わせ結果（Markdown）:
+---
+${reviewMarkdown}
+---
+
+弱点克服出題の指示（必須）:
+- 上記の答え合わせ結果を分析し、**低得点・要修正の問** から読み取れる誤り傾向（時制・語順・関係詞・準動詞の役割など）を特定する
+- 今回の ${n} 問は、その弱点を **集中的に克服できる** 問題を中心に設計する
+- 前回と同じ日本語文・同じ模範解答は出題しない
+- 前回正解（8点以上）だった文法パターンは復習として1問程度にとどめ、苦手パターンを厚く出題する
+- テーマ・場面・主語は前回と重ならないよう新しい題材を使う`;
+}
+
+export function buildGeneratePrompt(stepInfo, n, { step, reviewMarkdown } = {}) {
   const seedExamples = formatSeedExamples(stepInfo.exercises);
   const themeAssignment = formatThemeAssignment(n);
   const stepExtra = step === 3
@@ -127,6 +143,7 @@ export function buildGeneratePrompt(stepInfo, n, { step } = {}) {
     : step === 7
       ? buildStep7GenerateExtra(n, getLastStep7TagSet())
       : '';
+  const followUpSection = reviewMarkdown ? buildFollowUpReviewSection(reviewMarkdown, n) : '';
 
   return {
     system: `あなたは英語教育の専門家です。
@@ -289,7 +306,7 @@ nuanceNative（必須）:
 - 難易度は日常的な文を使い、学習者が理解できるレベルに保つこと
 - 日本語の訳し方が1通りでない場合、模範解答のニュアンスが日本語に一致するよう jp を調整する。ただし不自然な日本語になる場合は en の方を jp に合わせて書き換える
 - ${n}問で扱う文法パターン（${stepInfo.focus}）もできるだけバラけさせ、似た構文の連続を避ける
-- JSON配列の並び順は問ごとにランダムにする（テーマ割り当ての順番と一致させない）${stepExtra}`,
+- JSON配列の並び順は問ごとにランダムにする（テーマ割り当ての順番と一致させない）${stepExtra}${followUpSection}`,
   };
 }
 

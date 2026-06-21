@@ -14,6 +14,7 @@ import ScoringCriteriaModal from './components/ScoringCriteriaModal.jsx';
 import { getScoreStyle } from './constants/scoring.js';
 import { APP_SCROLL_ID } from './hooks/usePinnedSectionHeader.js';
 import { formatResultsMarkdown } from './utils/formatResultsMarkdown.js';
+import { getFollowUpCount, loadReviewHistory, saveReviewHistory } from './utils/reviewHistory.js';
 
 const C = { page: '#FAF9F6', card: '#FFFFFF', line: '#EAE8E1', t1: '#1C1B19', t2: '#6B6862', t3: '#9A968D', ink: '#1C1B19' };
 
@@ -32,6 +33,7 @@ export default function App() {
   const [guideOpen, setGuideOpen] = useState(false);
   const [guideAnchor, setGuideAnchor] = useState(null);
   const [scoringOpen, setScoringOpen] = useState(false);
+  const [historyVersion, setHistoryVersion] = useState(0);
 
   const isPhrase = step === 'phrase';
   const sd = isPhrase ? null : STEPS[step];
@@ -42,6 +44,28 @@ export default function App() {
   const revealed = isPhrase ? false : (revealedByStep[step] || false);
   const showCreateButton = !isPhrase && (exercises.length === 0 || revealed);
   const hasPartialCheck = !revealed && checkResumeFrom != null;
+
+  const storedReview = !isPhrase ? loadReviewHistory(step) : null;
+  // historyVersion triggers re-read after save
+  void historyVersion;
+
+  const buildResultsMarkdown = () => formatResultsMarkdown({
+    step,
+    stepLabel: sd.focus,
+    stepSub: sd.sub,
+    exercises,
+    attempts,
+    evaluations,
+  });
+
+  const sessionFollowUpCount = revealed && exercises.length > 0
+    ? getFollowUpCount(exercises.length)
+    : 0;
+  const storedFollowUpCount = exercises.length === 0 && storedReview
+    ? getFollowUpCount(storedReview.questionCount)
+    : 0;
+  const showSessionFollowUp = sessionFollowUpCount > 0;
+  const showStoredFollowUp = storedFollowUpCount > 0;
 
   // ── Step switch ─────────────────────────────────────────────────────────────
   const switchStep = (s) => {
@@ -58,21 +82,49 @@ export default function App() {
   };
 
   // ── Generate new exercises via Claude ───────────────────────────────────────
+  const resetStepSession = () => {
+    setAttemptsByStep((prev) => ({ ...prev, [step]: {} }));
+    setEvaluationsByStep((prev) => ({ ...prev, [step]: {} }));
+    setCheckResumeFromByStep((prev) => ({ ...prev, [step]: null }));
+    setRevealedByStep((prev) => ({ ...prev, [step]: false }));
+  };
+
   const handleGenerate = async () => {
     setIsGenerating(true);
     setError('');
     try {
       const generated = await generateExercises(apiKey, sd, EXERCISES_PER_SET, { step });
       setExercisesByStep((prev) => ({ ...prev, [step]: generated }));
-      setAttemptsByStep((prev) => ({ ...prev, [step]: {} }));
-      setEvaluationsByStep((prev) => ({ ...prev, [step]: {} }));
-      setCheckResumeFromByStep((prev) => ({ ...prev, [step]: null }));
-      setRevealedByStep((prev) => ({ ...prev, [step]: false }));
+      resetStepSession();
     } catch (e) {
       setError(`問題生成エラー: ${e.message}`);
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const handleFollowUpGenerate = async (count, reviewMarkdown) => {
+    setIsGenerating(true);
+    setError('');
+    try {
+      const generated = await generateExercises(apiKey, sd, count, { step, reviewMarkdown });
+      setExercisesByStep((prev) => ({ ...prev, [step]: generated }));
+      resetStepSession();
+      document.getElementById(APP_SCROLL_ID)?.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (e) {
+      setError(`弱点克服問題の生成エラー: ${e.message}`);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleSessionFollowUp = () => {
+    handleFollowUpGenerate(sessionFollowUpCount, buildResultsMarkdown());
+  };
+
+  const handleStoredFollowUp = () => {
+    if (!storedReview) return;
+    handleFollowUpGenerate(storedFollowUpCount, storedReview.markdown);
   };
 
   // ── Bulk answer check via Claude (1 question per batch, resumable) ─────────
@@ -95,7 +147,7 @@ export default function App() {
         operationTag: ex.operationTag,
         thread: ex.thread,
       }));
-      await checkAnswers(apiKey, pairs, {
+      const finalEvaluations = await checkAnswers(apiKey, pairs, {
         step,
         startIndex,
         onBatchComplete: (batchStart, batchResults) => {
@@ -107,8 +159,34 @@ export default function App() {
           });
         },
       });
+      const evalMap = startIndex === 0
+        ? Object.fromEntries(finalEvaluations.map((ev, i) => [i, ev]))
+        : {
+          ...(evaluationsByStep[step] || {}),
+          ...Object.fromEntries(
+            finalEvaluations
+              .map((ev, i) => (ev != null ? [i, ev] : null))
+              .filter(Boolean),
+          ),
+        };
       setCheckResumeFromByStep((prev) => ({ ...prev, [step]: null }));
       setRevealedByStep((prev) => ({ ...prev, [step]: true }));
+      const markdown = formatResultsMarkdown({
+        step,
+        stepLabel: sd.focus,
+        stepSub: sd.sub,
+        exercises,
+        attempts,
+        evaluations: evalMap,
+      });
+      const total = Object.values(evalMap).reduce((sum, ev) => sum + (ev?.score ?? 0), 0);
+      saveReviewHistory(step, {
+        markdown,
+        questionCount: exercises.length,
+        totalScore: total,
+        maxScore: exercises.length * POINTS_PER_QUESTION,
+      });
+      setHistoryVersion((v) => v + 1);
       document.getElementById(APP_SCROLL_ID)?.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (e) {
       const failedAt = e.failedAtIndex ?? startIndex;
@@ -191,6 +269,17 @@ export default function App() {
                   opacity: isGenerating ? 0.7 : 1, fontFamily: 'inherit',
                 }}>
                   {isGenerating ? '問題を作成中…' : '問題を作成する'}
+                </button>
+              )}
+              {exercises.length === 0 && showStoredFollowUp && (
+                <button type="button" onClick={handleStoredFollowUp} disabled={isGenerating} style={{
+                  width: '100%', padding: 14, borderRadius: 12, marginTop: 8,
+                  border: `1px solid ${C.line}`, background: C.card, color: C.t1,
+                  fontSize: 15, fontWeight: 700,
+                  cursor: isGenerating ? 'not-allowed' : 'pointer',
+                  opacity: isGenerating ? 0.7 : 1, fontFamily: 'inherit',
+                }}>
+                  {isGenerating ? '弱点克服問題を作成中…' : `前回の結果から弱点克服（${storedFollowUpCount}問）`}
                 </button>
               )}
             </div>
@@ -284,15 +373,19 @@ export default function App() {
                   採点基準を見る
                 </button>
                 <CopyResultsButton
-                getMarkdown={() => formatResultsMarkdown({
-                  step,
-                  stepLabel: sd.focus,
-                  stepSub: sd.sub,
-                  exercises,
-                  attempts,
-                  evaluations,
-                })}
+                getMarkdown={buildResultsMarkdown}
               />
+                {showSessionFollowUp && (
+                  <button type="button" onClick={handleSessionFollowUp} disabled={isGenerating} style={{
+                    width: '100%', padding: 14, borderRadius: 14, marginTop: 8,
+                    border: `1px solid ${C.line}`, background: C.card, color: C.t1,
+                    fontSize: 15, fontWeight: 700,
+                    cursor: isGenerating ? 'not-allowed' : 'pointer',
+                    opacity: isGenerating ? 0.7 : 1, fontFamily: 'inherit',
+                  }}>
+                    {isGenerating ? '弱点克服問題を作成中…' : `弱点に合わせて再出題（${sessionFollowUpCount}問）`}
+                  </button>
+                )}
               </>
             ) : null}
           </>

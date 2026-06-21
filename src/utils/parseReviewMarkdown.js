@@ -1,7 +1,9 @@
+import { parseCoreTagSummaryFromMarkdown, markdownHasErrorTags } from '../constants/essences.js';
+
 /**
  * Parse an uploaded or pasted answer-check Markdown export.
  * @param {string} text
- * @returns {{ markdown: string, questionCount: number, totalScore: number | null, maxScore: number | null, step: number | null }}
+ * @returns {{ markdown: string, questionCount: number, totalScore: number | null, maxScore: number | null, step: number | null, coreTagSummary: string }}
  */
 export function parseReviewMarkdown(text) {
   const markdown = String(text || '').trim();
@@ -31,6 +33,10 @@ export function parseReviewMarkdown(text) {
 
   const stepMatch = markdown.match(/\*\*Step:\*\*\s*Step\s*(\d+)/);
   const step = stepMatch ? Number(stepMatch[1]) : null;
+  const coreCounts = parseCoreTagSummaryFromMarkdown(markdown);
+  const coreTagSummary = Object.keys(coreCounts).length
+    ? Object.entries(coreCounts).map(([k, n]) => `${k}(${n})`).join(', ')
+    : '';
 
-  return { markdown, questionCount, totalScore, maxScore, step };
+  return { markdown, questionCount, totalScore, maxScore, step, coreTagSummary, hasErrorTags: markdownHasErrorTags(markdown) };
 }

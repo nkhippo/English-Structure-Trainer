@@ -70,3 +70,25 @@ export function normalizePart(part) {
   };
   return repairPartInner(normalized);
 }
+
+/**
+ * Compress parts for grading prompt (top level + 1 inner depth; t and r only).
+ * @param {Part[]} parts
+ * @returns {string}
+ */
+export function formatCompressedParts(parts) {
+  if (!Array.isArray(parts) || parts.length === 0) return '（なし）';
+
+  return parts.map((p) => {
+    if (!p?.t) return '';
+    let line = `${p.t} [${p.r}]`;
+    if (Array.isArray(p.inner) && p.inner.length > 0) {
+      const inner = p.inner
+        .filter((c) => c?.t)
+        .map((c) => `${c.t} [${c.r}]`)
+        .join(' ');
+      if (inner) line += ` { ${inner} }`;
+    }
+    return line;
+  }).filter(Boolean).join(' | ');
+}

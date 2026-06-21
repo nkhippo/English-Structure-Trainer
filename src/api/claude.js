@@ -1,4 +1,5 @@
-import { buildGeneratePrompt, buildCheckPrompt, shuffleArray } from '../prompts/index.js';
+import { buildGeneratePrompt, buildCheckPrompt, buildEnNativePrompt, shuffleArray } from '../prompts/index.js';
+import { ERROR_TAG_CODES } from '../constants/essences.js';
 import { saveLastStep7TagSet } from '../constants/step7.js';
 import { buildPhraseGeneratePrompt, buildPhraseFeedbackEnrichPrompt } from '../prompts/phraseQuiz.js';
 import { getLevelConfig, buildPhraseChoices, planPhraseSession } from '../constants/framingExpressions.js';
@@ -280,8 +281,8 @@ function normalizeExercise(ex) {
  * @param {number} n  Number of exercises to generate (default EXERCISES_PER_SET)
  * @returns {Promise<Exercise[]>}
  */
-export async function generateExercises(apiKey, stepInfo, n = EXERCISES_PER_SET, { step, reviewMarkdown } = {}) {
-  const { system, user } = buildGeneratePrompt(stepInfo, n, { step, reviewMarkdown });
+export async function generateExercises(apiKey, stepInfo, n = EXERCISES_PER_SET, { step, reviewMarkdown, coreTagSummary } = {}) {
+  const { system, user } = buildGeneratePrompt(stepInfo, n, { step, reviewMarkdown, coreTagSummary });
   const raw = await callClaude(apiKey, system, user, {
     prefill: '[',
     maxTokens: MAX_TOKENS_GENERATE,
@@ -298,6 +299,63 @@ export async function generateExercises(apiKey, stepInfo, n = EXERCISES_PER_SET,
     if (tags.length) saveLastStep7TagSet(tags);
   }
   return normalized;
+}
+
+function parseJsonObject(text) {
+  const cleaned = sanitizeJsonText(text);
+  const start = cleaned.indexOf('{');
+  if (start === -1) throw new Error('JSONオブジェクトを抽出できませんでした');
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = start; i < cleaned.length; i++) {
+    const ch = cleaned[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === '\\') escaped = true;
+      else if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') { inString = true; continue; }
+    if (ch === '{') depth++;
+    else if (ch === '}') {
+      depth--;
+      if (depth === 0) {
+        const json = cleaned.slice(start, i + 1);
+        let lastError;
+        for (const candidate of buildJsonCandidates(json)) {
+          try {
+            const parsed = JSON.parse(candidate);
+            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed;
+          } catch (e) {
+            lastError = e;
+          }
+        }
+        throw lastError ?? new Error('JSONオブジェクトの解析に失敗しました');
+      }
+    }
+  }
+  throw new Error('JSONオブジェクトが途中で切れています');
+}
+
+/**
+ * On-demand enNative + nuanceNative for one exercise.
+ * @param {string} apiKey
+ * @param {string} jp
+ * @param {string} en
+ */
+export async function generateEnNative(apiKey, jp, en) {
+  const { system, user } = buildEnNativePrompt(jp, en);
+  const raw = await callClaude(apiKey, system, user, {
+    prefill: '{',
+    maxTokens: 2048,
+    debug: { operation: 'en_native', step: null },
+  });
+  const parsed = parseJsonObject(raw);
+  return {
+    enNative: typeof parsed.enNative === 'string' ? parsed.enNative.trim() : '',
+    nuanceNative: typeof parsed.nuanceNative === 'string' ? parsed.nuanceNative.trim() : '',
+  };
 }
 
 /**
@@ -583,6 +641,11 @@ export function planPhraseQuizTargets(levelId, count) {
   return planPhraseSession(levelId, count);
 }
 
+function normalizeErrorTags(tags) {
+  if (!Array.isArray(tags)) return [];
+  return [...new Set(tags.filter((code) => ERROR_TAG_CODES.includes(code)))];
+}
+
 function normalizeEvaluation(ev, attempt = '') {
   const hasAttempt = String(attempt || '').trim().length > 0;
 
@@ -591,6 +654,7 @@ function normalizeEvaluation(ev, attempt = '') {
       ...ev,
       score: 0,
       correct: false,
+      errorTags: [],
     };
   }
 
@@ -602,5 +666,6 @@ function normalizeEvaluation(ev, attempt = '') {
     ...ev,
     score,
     correct: score >= 8,
+    errorTags: normalizeErrorTags(ev.errorTags),
   };
 }

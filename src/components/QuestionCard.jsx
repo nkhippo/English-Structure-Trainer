@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { roleStyle } from '../utils/parts.js';
 import { getStep7ChapterAnchor, getStep7ChapterLabel } from '../constants/step7.js';
@@ -15,15 +16,22 @@ const C = { card: '#FFFFFF', page: '#FAF9F6', line: '#EAE8E1', t1: '#1C1B19', t2
  *   index: number,
  *   exercise: { jp: string, en: string, parts: object[], nuance?: string, enNative?: string, nuanceNative?: string, vocabHints?: { jp: string, en: string }[] },
  *   attempt: string,
- *   evaluation: { score: number, correct: boolean, feedback: string, correction: string|null } | null,
+ *   evaluation: { score: number, correct: boolean, feedback: string, correction: string|null, errorTags?: string[] } | null,
  *   revealed: boolean,
  *   onAttemptChange: (v: string) => void,
  *   onOpenGuideChapter?: (anchor: string) => void,
+ *   onLoadEnNative?: () => void,
+ *   enNativeLoading?: boolean,
  * }} props
  */
-export default function QuestionCard({ index, exercise, attempt, evaluation, revealed, onAttemptChange, onOpenGuideChapter }) {
+export default function QuestionCard({
+  index, exercise, attempt, evaluation, revealed, onAttemptChange, onOpenGuideChapter,
+  onLoadEnNative, enNativeLoading = false,
+}) {
   const { jp, en } = exercise;
   const parts = (exercise.parts ?? []).filter((p) => p?.t);
+  const [enNativeOpen, setEnNativeOpen] = useState(false);
+  const showEnNative = enNativeOpen && Boolean(exercise.enNative);
   const { sectionRef, sentinelRef, pinned, layout } = usePinnedSectionHeader(revealed);
 
   const inFlowHeaderStyle = revealed ? {
@@ -99,7 +107,7 @@ export default function QuestionCard({ index, exercise, attempt, evaluation, rev
               <div style={{ background: C.page, borderRadius: 10, padding: '8px 12px', fontSize: 15, color: C.t2, lineHeight: 1.5 }}>{en}</div>
             </div>
 
-            {exercise.enNative && (
+            {exercise.enNative && showEnNative && (
               <div style={{ marginBottom: 12 }}>
                 <p style={{ fontSize: 10.5, fontWeight: 700, color: C.t3, margin: '0 0 5px', letterSpacing: '.05em' }}>ネイティブらしい表現</p>
                 <div style={{ background: '#F5F8FC', borderRadius: 10, padding: '8px 12px', fontSize: 15, color: C.t2, lineHeight: 1.5, border: '1px solid #E2EAF2' }}>{exercise.enNative}</div>
@@ -107,6 +115,37 @@ export default function QuestionCard({ index, exercise, attempt, evaluation, rev
                   <p style={{ fontSize: 12, color: C.t2, margin: '6px 0 0', lineHeight: 1.6 }}>{exercise.nuanceNative}</p>
                 )}
               </div>
+            )}
+            {!exercise.enNative && onLoadEnNative && (
+              <button
+                type="button"
+                onClick={() => {
+                  setEnNativeOpen(true);
+                  onLoadEnNative();
+                }}
+                disabled={enNativeLoading}
+                style={{
+                  width: '100%', marginBottom: 12, padding: '10px 12px', borderRadius: 10,
+                  border: `1px solid ${C.line}`, background: C.page, color: C.t1,
+                  fontSize: 13, fontWeight: 600, cursor: enNativeLoading ? 'not-allowed' : 'pointer',
+                  fontFamily: 'inherit', opacity: enNativeLoading ? 0.7 : 1,
+                }}
+              >
+                {enNativeLoading ? '生成中…' : 'ネイティブらしい表現を見る'}
+              </button>
+            )}
+            {exercise.enNative && !showEnNative && (
+              <button
+                type="button"
+                onClick={() => setEnNativeOpen(true)}
+                style={{
+                  width: '100%', marginBottom: 12, padding: '10px 12px', borderRadius: 10,
+                  border: `1px solid ${C.line}`, background: C.page, color: C.t1,
+                  fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                }}
+              >
+                ネイティブらしい表現を見る
+              </button>
             )}
 
             {/* AI evaluation */}

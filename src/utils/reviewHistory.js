@@ -6,7 +6,7 @@ export function getFollowUpCount(questionCount) {
 }
 
 /**
- * @typedef {{ markdown: string, questionCount: number, totalScore: number, maxScore: number, savedAt: string, sourceStep?: number | null }} ReviewHistory
+ * @typedef {{ markdown: string, questionCount: number, totalScore: number, maxScore: number, savedAt: string, sourceStep?: number | null, coreTagSummary?: string }} ReviewHistory
  */
 
 /**

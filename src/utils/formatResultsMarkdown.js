@@ -1,4 +1,5 @@
 import { POINTS_PER_QUESTION } from '../api/claude.js';
+import { aggregateCoreErrorTags, formatCoreTagSummary } from '../constants/essences.js';
 
 /**
  * @param {{
@@ -7,7 +8,7 @@ import { POINTS_PER_QUESTION } from '../api/claude.js';
  *   stepSub: string,
  *   exercises: { jp: string, en: string, enNative?: string, nuance?: string, nuanceNative?: string }[],
  *   attempts: Record<number, string>,
- *   evaluations: Record<number, { score: number, correct: boolean, feedback: string }>,
+ *   evaluations: Record<number, { score: number, correct: boolean, feedback: string, errorTags?: string[] }>,
  * }} params
  */
 export function formatResultsMarkdown({
@@ -21,6 +22,7 @@ export function formatResultsMarkdown({
   const totalScore = exercises.reduce((sum, _, i) => sum + (evaluations[i]?.score ?? 0), 0);
   const maxScore = exercises.length * POINTS_PER_QUESTION;
   const date = new Date().toLocaleString('ja-JP', { hour12: false });
+  const coreSummary = formatCoreTagSummary(aggregateCoreErrorTags(evaluations));
 
   const lines = [
     '# 英文構造トレーナー — 答え合わせ結果',
@@ -29,10 +31,13 @@ export function formatResultsMarkdown({
     `- **Step:** Step ${step} ${stepSub}`,
     `- **文法ポイント:** ${stepLabel}`,
     `- **合計スコア:** ${totalScore} / ${maxScore}点`,
-    '',
-    '---',
-    '',
   ];
+
+  if (coreSummary) {
+    lines.push(`- **弱点タグ（core集計）:** ${coreSummary}`);
+  }
+
+  lines.push('', '---', '');
 
   exercises.forEach((ex, i) => {
     const ev = evaluations[i];
@@ -59,6 +64,9 @@ export function formatResultsMarkdown({
 
     if (ev) {
       lines.push(`**採点:** ${ev.score} / ${POINTS_PER_QUESTION}点（${status}）`, '');
+      if (ev.errorTags?.length) {
+        lines.push(`**誤りタグ:** ${ev.errorTags.join(', ')}`, '');
+      }
       lines.push('### フィードバック', '', ev.feedback, '');
     }
 

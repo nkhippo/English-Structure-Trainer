@@ -16,6 +16,8 @@ Claude（Web / API）に手動で採点してもらう際は、本書の **Syste
 | 1回の採点問数 | **1問**（7問セットは7回に分割） |
 | レスポンス安定化 | assistant メッセージで `[` を prefill（JSON 配列の先頭を固定） |
 
+> **2026-06 改修:** 各問ブロックに **圧縮 parts**（`t` + `r`、1段 inner まで）を送付。返却 JSON に **`errorTags`** 配列を追加（feedback 本文・書式は現状維持）。
+
 ---
 
 ## System プロンプト
@@ -105,14 +107,35 @@ feedback 書式（可読性最優先）:
 ```
 [{{番号}}]
 日本語: {{jp}}
-模範解答（100点）: {{en}}
+模範解答（100点・文法・構造）: {{en}}
 模範解答のポイント: {{nuance}}          ← nuance がある場合のみ
 操作タグ: {{operationTag}}                ← Step 7 のみ（ある場合）
 糸: {{thread}}                            ← Step 7 のみ（ある場合）
+構造（圧縮 parts）: {{t [r] | ...}}        ← トップレベル＋1段 inner（t/r のみ）
 解答: {{attempt または （未入力）}}
 ```
 
-> **注:** 構造分解（`parts`）は採点プロンプトには含めません（入力トークン削減のため）。色分け表示用の `parts` は問題生成時にアプリ側で保持します。
+> **注:** 圧縮 parts は `errorTags` 付与の精度向上用。`n`（説明文）と深いネストは省略。
+
+---
+
+## errorTags（返却 JSON に追加）
+
+```json
+{
+  "score": 8,
+  "correct": true,
+  "feedback": "...",
+  "correction": null,
+  "errorTags": ["verbInfo", "lexical"]
+}
+```
+
+タクソノミーは `essences.md` / `src/constants/essences.js` を参照。
+
+- **core**（skeleton / verbInfo / role / attachment / nesting / advanced）: 構造の誤り。該当するものを過不足なく列挙
+- **peripheral**（functionWord / lexical）: 表層の誤り。点数には影響するが弱点克服の集計からは除外
+- 正解時は `[]`
 
 ---
 

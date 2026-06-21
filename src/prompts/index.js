@@ -3,6 +3,13 @@ import {
   STEP7_INVERSION_NEGATIVE_ADV,
   getLastStep7TagSet,
 } from '../constants/step7.js';
+import {
+  getEssenceForStep,
+  getCoverageForStep,
+  formatErrorTaxonomyForPrompt,
+  CORE_ERROR_CODES,
+} from '../constants/essences.js';
+import { formatCompressedParts } from '../utils/parts.js';
 
 // Prompt templates for Claude API calls.
 // Both prompts instruct Claude to return JSON-only responses
@@ -72,14 +79,35 @@ function formatThemeAssignment(n) {
     .join('\n');
 }
 
-function buildStep3GenerateExtra() {
+function buildStep3GenerateExtra(n) {
   return `
 Step 3 固有の出題制約（必須）:
-- 7問のうち **少なくとも2問** は疑問文または否定文を含める
+- ${n}問のうち **少なくとも2問** は疑問文または否定文を含める
 - 疑問文：Yes/No疑問（助動詞前置）と wh疑問（空所を文頭へ）の両方をセット内でカバーする
 - 否定文：助動詞 + not（短縮形 don't / doesn't / didn't / hasn't 等）を含める
 - 日本語 jp には「〜ですか」「〜ません」「〜ない」など疑問・否定の手がかりを自然に含める
-- 時制・相・態・助動詞の問題も引き続きバランスよく含める`;
+- 時制・相・態・助動詞の問題も引き続きバランスよく含める
+
+Step 3 MECE網羅規則:
+${getCoverageForStep(3)}`;
+}
+
+function buildStep4GenerateExtra() {
+  return `
+Step 4 固有の出題制約（必須）:
+${getCoverageForStep(4)}`;
+}
+
+function buildStep5GenerateExtra() {
+  return `
+Step 5 固有の出題制約（必須）:
+${getCoverageForStep(5)}`;
+}
+
+function buildStep6GenerateExtra() {
+  return `
+Step 6 固有の出題制約（必須）:
+${getCoverageForStep(6)}`;
 }
 
 function buildStep7GenerateExtra(n, lastTagSet) {
@@ -95,7 +123,7 @@ Step 7 固有の出題制約（必須）:
 - ${lastTagsNote}
 - **最低1問** は operationTag「倒置/強調」かつ、否定副詞句（${inversionList} 等）による倒置を含める
 - 全問に cefr ラベル（"A2"|"B1"|"B2"|"C1"）を付与。比較・仮定法の基本型は B1〜B2 中心、倒置・話法・省略は B2〜C1 中心
-- 各問に thread を付与（"糸1" または "糸2"）。nuance の末尾に「糸1（助動詞前置）の再利用」または「糸2（空所＋移動）の再利用」のどちらかを1行で必ず含める
+- 各問に thread を付与（"糸1" または "糸2"）。nuance の末尾に、このSTEPのエッセンス（糸1または糸2）のどれを使っているかを1行で必ず示す
 - 仮定法・話法など文が長くなりやすい操作は、日本語 jp を短く設計して文長上限を守る
 - 否定副詞句リストはフレーズバンク（CEFR別）と対応。倒置問題では文頭配置＋助動詞前置を模範解答に反映する
 
@@ -119,7 +147,16 @@ Step 7 採点の補足（必須）:
 - feedback で模範解答の妥当性を説明するとき、可能なら「糸1（助動詞前置）」または「糸2（空所＋移動）」のどちらの再利用かに1行触れる`;
 }
 
-function buildFollowUpReviewSection(reviewMarkdown, n, step) {
+function buildFollowUpReviewSection(reviewMarkdown, n, step, { coreTagSummary } = {}) {
+  const coreCodes = CORE_ERROR_CODES.join(' / ');
+  const tagBlock = coreTagSummary
+    ? `
+前回の core 誤りタグ集計（弱点シグナル）: ${coreTagSummary}
+- 上記 core タグを**優先**して弱点克服問題を設計すること
+- peripheral（lexical / functionWord）は出題に寄与させない`
+    : `
+- 前回結果に errorTags が無い場合は、Markdown 本文から低得点・要修正の問を分析すること`;
+
   return `
 
 前回の答え合わせ結果（Markdown）:
@@ -128,30 +165,33 @@ ${reviewMarkdown}
 ---
 
 弱点克服出題の指示（必須）:
-- 上記の答え合わせ結果を分析し、**低得点・要修正の問** から学習者の弱点を特定する
-- **軽微なスペルミス・タイポ・単語の綴り違いは弱点分析から除外する**（8〜9点でスペルだけが問題だった問は、正解扱いとして扱う）
-- 弱点は **大枠の概念・構造の理解不足** に焦点を当てる。例:
-  - 時制・相・態・助動詞の選択ミス（Step 3 相当）
-  - 不定詞・動名詞・分詞・前置詞句の X/Y/Z 役割の取り違え（Step 4 相当）
-  - 後置修飾・関係詞節・what節の語順（Step 5 相当）
-  - 副詞節・名詞節・等位接続・ネスト構造（Step 6 相当）
-  - 比較・仮定法・倒置など（Step 7 相当）
-- 現在の Step ${step} にとどまらず、**フィードバックから読み取れる概念レベルの弱点があれば Step を跨いで** 出題してよい
-- 今回の ${n} 問は、特定した **概念・構造の弱点** を集中的に克服できる問題を中心に設計する
+- 弱点は **ERROR_TAXONOMY の core 層**（${coreCodes}）で特定する。該当タグを過不足なく列挙して設計に反映する
+- **peripheral（lexical / functionWord）は弱点シグナルから除外** — スペル・語彙・機能語の語選択は次の出題に寄与させない
+- 8〜9点でスペル・語彙だけが問題だった問は、弱点分析から除外（正解扱い）${tagBlock}
+- 今回の ${n} 問は、特定した **core 構造の弱点** を集中的に克服できる問題を中心に設計する
+- 現在の Step ${step} にとどまらず、core タグが示す弱点があれば **Step を跨いで** 出題してよい
 - 前回と同じ日本語文・同じ模範解答は出題しない
-- 前回正解（8点以上、またはスペルミスのみの軽微な減点）だった文法パターンは復習として1問程度にとどめ、概念理解の苦手パターンを厚く出題する
+- 前回正解（8点以上、または peripheral のみの軽微な減点）だった文法パターンは復習として1問程度にとどめ、core の苦手パターンを厚く出題する
 - テーマ・場面・主語は前回と重ならないよう新しい題材を使う`;
 }
 
-export function buildGeneratePrompt(stepInfo, n, { step, reviewMarkdown } = {}) {
+function buildStepGenerateExtra(step, n) {
+  if (step === 3) return buildStep3GenerateExtra(n);
+  if (step === 4) return buildStep4GenerateExtra();
+  if (step === 5) return buildStep5GenerateExtra();
+  if (step === 6) return buildStep6GenerateExtra();
+  if (step === 7) return buildStep7GenerateExtra(n, getLastStep7TagSet());
+  return '';
+}
+
+export function buildGeneratePrompt(stepInfo, n, { step, reviewMarkdown, coreTagSummary } = {}) {
   const seedExamples = formatSeedExamples(stepInfo.exercises);
   const themeAssignment = formatThemeAssignment(n);
-  const stepExtra = step === 3
-    ? buildStep3GenerateExtra()
-    : step === 7
-      ? buildStep7GenerateExtra(n, getLastStep7TagSet())
-      : '';
-  const followUpSection = reviewMarkdown ? buildFollowUpReviewSection(reviewMarkdown, n, step) : '';
+  const stepExtra = buildStepGenerateExtra(step, n);
+  const essence = getEssenceForStep(step);
+  const followUpSection = reviewMarkdown
+    ? buildFollowUpReviewSection(reviewMarkdown, n, step, { coreTagSummary })
+    : '';
 
   return {
     system: `あなたは英語教育の専門家です。
@@ -169,6 +209,9 @@ JSONの厳守ルール:
 
 文法ポイント: ${stepInfo.sub}（${stepInfo.focus}）
 
+このSTEPの再利用原理（エッセンス）— nuance 末尾でどれを使ったか1行で示すこと:
+${essence}
+
 参考例（日本語の自然さ・文体の基準。テーマや内容は参考例に引きずられず、下記のテーマ割り当てに従うこと）:
 ${seedExamples || '  （参考例なし）'}
 
@@ -181,15 +224,13 @@ ${themeAssignment}
 生成手順（必ずこの順番で）:
 1. まず日本語文 jp を、母語話者が違和感なく言える自然な文として書く
 2. jp の意味を正確に英訳して en（文法・構造の模範）と parts を作る
-3. enNative（ネイティブらしい表現）と nuanceNative を作る
-4. 英文の構文要件（後置修飾など）を満たすために、jp を英語語順に無理やり合わせない
+3. 英文の構文要件（後置修飾など）を満たすために、jp を英語語順に無理やり合わせない
 
 返却形式（JSONのみ）:
 [
   {
     "jp": "自然な日本語文",
     "en": "採点基準となる模範英訳（Step の文法・構造を明確に示す表現・語順）",
-    "enNative": "ネイティブがより自然に言う英訳（チャンク・コロケーション重視。意味は jp と同じ）",
     "parts": [
       {
         "t": "英文のチャンク",
@@ -200,8 +241,7 @@ ${themeAssignment}
         ]
       }
     ],
-    "nuance": "en（文法・構造の模範）が採点基準となる理由（語順・文法パターンの選択根拠を1〜2文で）",
-    "nuanceNative": "enNative が en より自然に聞こえる理由（使ったチャンク・コロケーション・語順の違いを2〜3文で）",
+    "nuance": "en（文法・構造の模範）が採点基準となる理由（語順・文法パターンの選択根拠を1〜2文で）。**末尾に1行**でこのSTEPのエッセンスのどれを使っているかを示す",
     "vocabHints": [
       { "jp": "日本語の語（辞書形・基本形）", "en": "英語の原型（動詞原形・名詞単数形など）" }
     ]
@@ -248,12 +288,6 @@ vocabHints（単語ヒント）のルール:
 - 例: 「毎日走ることで体を健康に保つ」→ ○ "By running every day, I keep my body fit."
   （手段を By + 動名詞で明示し、文頭に置いて主節へ自然につなぐ）
   × "Running every day, I keep fit my body."（語順が不自然）
-
-ネイティブらしい表現（enNative）の品質要件 — 採点対象外・参考表示:
-- en と **意味は同じ**だが、ネイティブが日常で使うチャンク・コロケーション・語順を優先する
-- en と異なる構文・語順でもよい（例: 分詞構文 vs 関係詞節、felt tired vs hasn't been tired）
-- en より口語的・自然に聞こえる表現を選ぶ。文法パターンの「教材としての見やすさ」より会話・文章の自然さを優先
-- en と enNative が同じ文になる場合は、コロケーションや語彙だけを変えて差をつける（完全同一は避ける）
 
 parts[].inner（ネスト構造・再帰的）:
 - X/Y/Z のルールは句・節の内部にも再帰的に適用する
@@ -303,11 +337,7 @@ nuance（必須）:
 - en 全体が採点基準（100点）となる理由を1〜2文で書く
 - 別の訳でも意味は通るが、なぜ en の語順・文法パターンが学習・採点の基準として望ましいかを説明する
 - 学習者が「なぜこの語順・表現なのか」を理解できる内容にする
-
-nuanceNative（必須）:
-- enNative が en よりネイティブらしく聞こえる理由を2〜3文で書く
-- 具体的なチャンク・コロケーション・語順の違いを指摘し、en との対比を含める
-- 採点基準ではない参考情報であることを意識し、自然さの観点で説明する
+- **末尾に1行**で、このSTEPのエッセンス（上記「再利用原理」）のどれを使っているかを明示する
 
 制約:
 - parts[].t をスペースで繋いだ文字列が en と一致すること
@@ -337,7 +367,7 @@ export function buildCheckPrompt(pairs, { step } = {}) {
   const items = pairs
     .map(
       (p, i) =>
-        `[${i + 1}]\n日本語: ${p.jp}\n模範解答（100点・文法・構造）: ${p.en}${p.nuance ? `\n模範解答のポイント: ${p.nuance}` : ''}${p.operationTag ? `\n操作タグ: ${p.operationTag}` : ''}${p.thread ? `\n糸: ${p.thread}` : ''}\n解答: ${p.attempt || '（未入力）'}`
+        `[${i + 1}]\n日本語: ${p.jp}\n模範解答（100点・文法・構造）: ${p.en}${p.nuance ? `\n模範解答のポイント: ${p.nuance}` : ''}${p.operationTag ? `\n操作タグ: ${p.operationTag}` : ''}${p.thread ? `\n糸: ${p.thread}` : ''}\n構造（圧縮 parts）: ${formatCompressedParts(p.parts)}\n解答: ${p.attempt || '（未入力）'}`
     )
     .join('\n\n');
 
@@ -363,9 +393,20 @@ ${items}
     "score": 0〜10 の整数（各問10点満点）,
     "correct": true または false,
     "feedback": "下記の feedback ルールに従った日本語の解説",
-    "correction": "常に null（模範解答は別途表示するため不要）"
+    "correction": "常に null（模範解答は別途表示するため不要）",
+    "errorTags": ["skeleton", "verbInfo", ...]  // ERROR_TAXONOMY の code の配列。誤りなしは []
   }
 ]
+
+errorTags（必須・feedback とは別に機械可読で付与）:
+${formatErrorTaxonomyForPrompt()}
+
+errorTags 判定指針:
+- 構造の誤り（骨格・動詞情報・役割・係り受け・ネスト・発展操作）→ 対応する core コードを**過不足なく列挙**（1つに丸めない）
+- スペル・語彙・表現選択の誤り → lexical。冠詞・前置詞の語選択 → functionWord
+- core と peripheral は**直交する別軸**。両方該当すれば両方記録する
+- 点数（score）への影響は現行どおり。errorTags は弱点分析用の分類
+- 正解（構造的に誤りなし）の場合は errorTags: []
 
 score（10点満点）の目安:
 - 10点: 意味・文法ともに正解、または表現の差異のみで意味は完全一致
@@ -408,5 +449,30 @@ feedback 書式（可読性最優先）:
 - 行が長くなっても構わない。途中で不自然な位置で改行しない
 - feedback は学習者が「何を直すか」と「なぜ模範解答が100点なのか」の両方がわかるよう具体的に
 - 模範解答と異なる別解を correction として提示しない（模範解答は常に入力の「模範解答（100点）」を使う）${stepExtra}`,
+  };
+}
+
+/**
+ * Lightweight on-demand enNative generation (UI expand).
+ */
+export function buildEnNativePrompt(jp, en) {
+  return {
+    system: `あなたは英語教育の専門家です。
+必ず有効なJSONのみを返してください。マークダウンや説明文は一切含めないでください。`,
+
+    user: `以下の日本語と模範英訳（文法・構造）を入力に、ネイティブらしい参考表現を1組生成してください。
+
+日本語: ${jp}
+模範解答（文法・構造）: ${en}
+
+返却形式（JSONのみ、1要素のオブジェクト）:
+{
+  "enNative": "ネイティブがより自然に言う英訳（意味は jp と同じ。チャンク・コロケーション重視）",
+  "nuanceNative": "enNative が en より自然に聞こえる理由（2〜3文）"
+}
+
+要件:
+- en と意味は同じ。en より口語的・自然なチャンク・語順を優先してよい
+- 採点基準ではない参考情報として書く`,
   };
 }

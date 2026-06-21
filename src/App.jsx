@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { STEPS } from './constants/steps.js';
-import { getStoredApiKey, clearApiKey, generateExercises, checkAnswers, EXERCISES_PER_SET, POINTS_PER_QUESTION } from './api/claude.js';
+import { getStoredApiKey, clearApiKey, generateExercises, generateEnNative, checkAnswers, EXERCISES_PER_SET, POINTS_PER_QUESTION } from './api/claude.js';
 import ApiKeyInput from './components/ApiKeyInput.jsx';
 import StepTabs from './components/StepTabs.jsx';
 import QuestionCard from './components/QuestionCard.jsx';
@@ -17,6 +17,7 @@ import { formatResultsMarkdown } from './utils/formatResultsMarkdown.js';
 import { getFollowUpCount, loadReviewHistory, saveReviewHistory } from './utils/reviewHistory.js';
 import { parseReviewMarkdown } from './utils/parseReviewMarkdown.js';
 import ReviewMarkdownPanel from './components/ReviewMarkdownPanel.jsx';
+import { aggregateCoreErrorTags, formatCoreTagSummary } from './constants/essences.js';
 
 const C = { page: '#FAF9F6', card: '#FFFFFF', line: '#EAE8E1', t1: '#1C1B19', t2: '#6B6862', t3: '#9A968D', ink: '#1C1B19' };
 
@@ -37,6 +38,7 @@ export default function App() {
   const [scoringOpen, setScoringOpen] = useState(false);
   const [historyVersion, setHistoryVersion] = useState(0);
   const [markdownFileError, setMarkdownFileError] = useState('');
+  const [enNativeLoadingKey, setEnNativeLoadingKey] = useState(null);
 
   const isPhrase = step === 'phrase';
   const sd = isPhrase ? null : STEPS[step];
@@ -107,11 +109,11 @@ export default function App() {
     }
   };
 
-  const handleFollowUpGenerate = async (count, reviewMarkdown) => {
+  const handleFollowUpGenerate = async (count, reviewMarkdown, coreTagSummary = '') => {
     setIsGenerating(true);
     setError('');
     try {
-      const generated = await generateExercises(apiKey, sd, count, { step, reviewMarkdown });
+      const generated = await generateExercises(apiKey, sd, count, { step, reviewMarkdown, coreTagSummary });
       setExercisesByStep((prev) => ({ ...prev, [step]: generated }));
       resetStepSession();
       document.getElementById(APP_SCROLL_ID)?.scrollTo({ top: 0, behavior: 'smooth' });
@@ -123,12 +125,17 @@ export default function App() {
   };
 
   const handleSessionFollowUp = () => {
-    handleFollowUpGenerate(sessionFollowUpCount, buildResultsMarkdown());
+    const coreTagSummary = formatCoreTagSummary(aggregateCoreErrorTags(evaluations));
+    handleFollowUpGenerate(sessionFollowUpCount, buildResultsMarkdown(), coreTagSummary);
   };
 
   const handleStoredFollowUp = () => {
     if (!storedReview) return;
-    handleFollowUpGenerate(storedFollowUpCount, storedReview.markdown);
+    handleFollowUpGenerate(
+      storedFollowUpCount,
+      storedReview.markdown,
+      storedReview.coreTagSummary || '',
+    );
   };
 
   const handleMarkdownFile = async (file) => {
@@ -142,6 +149,7 @@ export default function App() {
         totalScore: parsed.totalScore ?? 0,
         maxScore: parsed.maxScore ?? parsed.questionCount * POINTS_PER_QUESTION,
         sourceStep: parsed.step,
+        coreTagSummary: parsed.coreTagSummary || '',
       });
       setHistoryVersion((v) => v + 1);
     } catch (e) {
@@ -202,12 +210,14 @@ export default function App() {
         evaluations: evalMap,
       });
       const total = Object.values(evalMap).reduce((sum, ev) => sum + (ev?.score ?? 0), 0);
+      const coreTagSummary = formatCoreTagSummary(aggregateCoreErrorTags(evalMap));
       saveReviewHistory(step, {
         markdown,
         questionCount: exercises.length,
         totalScore: total,
         maxScore: exercises.length * POINTS_PER_QUESTION,
         sourceStep: step,
+        coreTagSummary,
       });
       setHistoryVersion((v) => v + 1);
       document.getElementById(APP_SCROLL_ID)?.scrollTo({ top: 0, behavior: 'smooth' });
@@ -218,6 +228,26 @@ export default function App() {
     } finally {
       setIsChecking(false);
       setGradingProgress(0);
+    }
+  };
+
+  const handleLoadEnNative = async (index) => {
+    const ex = exercises[index];
+    if (!ex || ex.enNative) return;
+    const key = `${step}-${index}`;
+    setEnNativeLoadingKey(key);
+    setError('');
+    try {
+      const { enNative, nuanceNative } = await generateEnNative(apiKey, ex.jp, ex.en);
+      setExercisesByStep((prev) => {
+        const list = [...(prev[step] || [])];
+        list[index] = { ...list[index], enNative, nuanceNative };
+        return { ...prev, [step]: list };
+      });
+    } catch (e) {
+      setError(`ネイティブ表現の生成エラー: ${e.message}`);
+    } finally {
+      setEnNativeLoadingKey(null);
     }
   };
 
@@ -367,6 +397,8 @@ export default function App() {
                 revealed={revealed || evaluations[i] != null}
                 onAttemptChange={(v) => setAttemptsByStep((a) => ({ ...a, [step]: { ...a[step], [i]: v } }))}
                 onOpenGuideChapter={(anchor) => { setGuideAnchor(anchor); setGuideOpen(true); }}
+                onLoadEnNative={() => handleLoadEnNative(i)}
+                enNativeLoading={enNativeLoadingKey === `${step}-${i}`}
               />
             ))}
 

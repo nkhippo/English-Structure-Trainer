@@ -93,6 +93,24 @@ export function formatCoreTagSummary(counts) {
 }
 
 /**
+ * Aggregate core error tags from per-question **誤りタグ:** lines in exported markdown.
+ * @param {string} markdown
+ * @returns {Record<string, number>}
+ */
+export function aggregateCoreTagsFromMarkdownBody(markdown) {
+  const counts = {};
+  const re = /\*\*誤りタグ:\*\*\s*([^\n]+)/g;
+  let match;
+  while ((match = re.exec(markdown)) !== null) {
+    for (const part of match[1].split(',')) {
+      const code = part.trim();
+      if (isCoreErrorTag(code)) counts[code] = (counts[code] || 0) + 1;
+    }
+  }
+  return counts;
+}
+
+/**
  * Parse core tag summary from markdown header line.
  * @param {string} markdown
  * @returns {Record<string, number>}

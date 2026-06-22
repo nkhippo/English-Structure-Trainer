@@ -79,18 +79,25 @@ function formatThemeAssignment(n) {
     .join('\n');
 }
 
-function buildStep3GenerateExtra(n, interrogativeCount) {
-  const interrogativeBlock = interrogativeCount != null
-    ? `- ${n}問のうち **ちょうど${interrogativeCount}問** は疑問文とする（残りは平叙文または否定文）
-- ${interrogativeCount >= 2
-      ? '疑問文：Yes/No疑問（助動詞前置）と wh疑問（空所を文頭へ）の両方をセット内でカバーする'
-      : '疑問文：Yes/No疑問（助動詞前置）または wh疑問（空所を文頭へ）'}
-- 否定文（残りで該当する場合）：助動詞 + not（短縮形 don't / doesn't / didn't / hasn't 等）を含めてよい
-- 日本語 jp には疑問文では「〜ですか」「〜でしょうか」など、否定文では「〜ません」「〜ない」などの手がかりを自然に含める`
+function buildInterrogativeCountSection(n, interrogativeCount, step) {
+  if (interrogativeCount == null) return '';
+  const step7Note = step === 7
+    ? '\n- 疑問文に指定された問には operationTag「疑問」を付与し、その問の文法焦点は疑問文の操作とする'
     : '';
-
   return `
-Step 3 固有の出題制約（必須）:${interrogativeBlock ? `\n${interrogativeBlock}` : ''}
+
+疑問文の出題数（必須）:
+- ${n}問のうち **ちょうど${interrogativeCount}問** は疑問文とする（残りは平叙文または否定文）
+- ${interrogativeCount >= 2
+    ? '疑問文：Yes/No疑問（助動詞前置）と wh疑問（空所を文頭へ）の両方をセット内でカバーする'
+    : '疑問文：Yes/No疑問（助動詞前置）または wh疑問（空所を文頭へ）'}
+- 否定文（残りで該当する場合）：助動詞 + not（短縮形 don't / doesn't / didn't / hasn't 等）を含めてよい
+- 日本語 jp には疑問文では「〜ですか」「〜でしょうか」など、否定文では「〜ません」「〜ない」などの手がかりを自然に含める${step7Note}`;
+}
+
+function buildStep3GenerateExtra() {
+  return `
+Step 3 固有の出題制約（必須）:
 - 時制・相・態・助動詞の問題も引き続きバランスよく含める
 
 Step 3 MECE網羅規則:
@@ -180,8 +187,8 @@ ${reviewMarkdown}
 - テーマ・場面・主語は前回と重ならないよう新しい題材を使う`;
 }
 
-function buildStepGenerateExtra(step, n, { interrogativeCount } = {}) {
-  if (step === 3) return buildStep3GenerateExtra(n, interrogativeCount);
+function buildStepGenerateExtra(step, n) {
+  if (step === 3) return buildStep3GenerateExtra();
   if (step === 4) return buildStep4GenerateExtra();
   if (step === 5) return buildStep5GenerateExtra();
   if (step === 6) return buildStep6GenerateExtra();
@@ -192,9 +199,11 @@ function buildStepGenerateExtra(step, n, { interrogativeCount } = {}) {
 export function buildGeneratePrompt(stepInfo, n, { step, reviewMarkdown, coreTagSummary, interrogativeCount } = {}) {
   const seedExamples = formatSeedExamples(stepInfo.exercises);
   const themeAssignment = formatThemeAssignment(n);
-  const stepExtra = buildStepGenerateExtra(step, n, {
-    interrogativeCount: reviewMarkdown ? undefined : interrogativeCount,
-  });
+  const applyInterrogativeCount = !reviewMarkdown && step >= 3 && step <= 7 && interrogativeCount != null;
+  const interrogativeSection = applyInterrogativeCount
+    ? buildInterrogativeCountSection(n, interrogativeCount, step)
+    : '';
+  const stepExtra = buildStepGenerateExtra(step, n);
   const essence = getEssenceForStep(step);
   const followUpSection = reviewMarkdown
     ? buildFollowUpReviewSection(reviewMarkdown, n, step, { coreTagSummary })
@@ -351,7 +360,7 @@ nuance（必須）:
 - 難易度は日常的な文を使い、学習者が理解できるレベルに保つこと
 - 日本語の訳し方が1通りでない場合、模範解答のニュアンスが日本語に一致するよう jp を調整する。ただし不自然な日本語になる場合は en の方を jp に合わせて書き換える
 - ${n}問で扱う文法パターン（${stepInfo.focus}）もできるだけバラけさせ、似た構文の連続を避ける
-- JSON配列の並び順は問ごとにランダムにする（テーマ割り当ての順番と一致させない）${stepExtra}${followUpSection}`,
+- JSON配列の並び順は問ごとにランダムにする（テーマ割り当ての順番と一致させない）${interrogativeSection}${stepExtra}${followUpSection}`,
   };
 }
 

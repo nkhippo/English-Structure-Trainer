@@ -106,7 +106,7 @@ export default function App() {
     try {
       const generated = await generateExercises(apiKey, sd, EXERCISES_PER_SET, {
         step,
-        interrogativeCount: step === 3 ? interrogativeCount : undefined,
+        interrogativeCount,
       });
       setExercisesByStep((prev) => ({ ...prev, [step]: generated }));
       resetStepSession();
@@ -332,7 +332,7 @@ export default function App() {
               <StepInfoAccordion step={step} />
               {showCreateButton && (
                 <>
-                  {step === 3 && (
+                  {step >= 3 && step <= 7 && (
                     <div style={{
                       display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10,
                       padding: '10px 14px', borderRadius: 10,

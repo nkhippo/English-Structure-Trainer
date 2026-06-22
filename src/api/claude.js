@@ -276,13 +276,22 @@ function normalizeExercise(ex) {
   return enrichInterrogativeMetadata(base);
 }
 
+const STEP_INTERROGATIVE_RETRY_HINTS = {
+  3: 'yesno と wh を混在させ、各問に mood=interrogative / questionType / thread を付与。否定文のみはカウントしない。',
+  4: 'wh で準動詞/前置詞句スロットを問う疑問文を中心に。',
+  5: 'Yes/No のみ（wh禁止）。関係詞節を内包した "Is the man who...?" 型。',
+  6: '間接疑問（whether/wh 名詞節X）も mood=interrogative としてカウントする。',
+  7: 'operationTag「疑問」かつ mood=interrogative の問を effectiveTarget 件確保する。',
+};
+
 function buildInterrogativeRetryUser(user, step, effectiveTarget) {
+  const stepHint = STEP_INTERROGATIVE_RETRY_HINTS[step] ?? '';
   return `${user}
 
 【再生成指示 — 必須】
-前回の出力に mood=interrogative の問が不足していた。
-必ず effectiveTarget=${effectiveTarget} 件以上の疑問文を含めること（各問に mood=interrogative と questionType を付与）。
-Step 6 では間接疑問（whether/wh 名詞節X）も mood=interrogative としてカウントする。0件での返却は不可。`;
+前回の出力に mood=interrogative の問が effectiveTarget=${effectiveTarget} 件未満だった。
+必ず ${effectiveTarget} 件以上の疑問文を含めること（各問に mood=interrogative と questionType を付与）。${stepHint ? `\nStep ${step}: ${stepHint}` : ''}
+0件での返却は不可。`;
 }
 
 // ── Public API ───────────────────────────────────────────────────────────────

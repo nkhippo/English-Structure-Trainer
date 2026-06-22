@@ -7,6 +7,8 @@ import {
   getEssenceForStep,
   getCoverageForStep,
   formatErrorTaxonomyForPrompt,
+  formatQuestionPolicyForPrompt,
+  getDefaultQuestionTarget,
   CORE_ERROR_CODES,
 } from '../constants/essences.js';
 import { formatCompressedParts } from '../utils/parts.js';
@@ -133,10 +135,18 @@ Step 7 固有の出題制約（必須）:
   "thread": "糸1|糸2"`;
 }
 
+function buildInterrogativeCheckExtra() {
+  return `
+疑問文採点の補足:
+- 疑問文の解答では、糸1（助動詞前置）または糸2（空所＋wh移動）のどちらの操作が求められているかに触れてよい
+- 助動詞前置・語順の誤り（糸1）→ errorTags に skeleton（助動詞の形自体の誤りは verbInfo）
+- 空所・wh移動の誤り（糸2）→ errorTags に skeleton（役割取り違えを伴えば role）`;
+}
+
 function buildStep3CheckExtra() {
   return `
 Step 3 採点の補足:
-- 疑問文・否定文の解答でも、助動詞の形・語順が正しければ意味が通れば高得点とする`;
+- 疑問文・否定文の解答でも、助動詞の形・語順が正しければ意味が通れば高得点とする${buildInterrogativeCheckExtra()}`;
 }
 
 function buildStep7CheckExtra() {
@@ -144,7 +154,28 @@ function buildStep7CheckExtra() {
 Step 7 採点の補足（必須）:
 - **構文の種類は問わず、正しい変形であれば正解とする**（例：it-cleft と what-cleft の両方、仮定法の別表現など）
 - 操作タグ（比較・仮定法・疑問・倒置/強調・否定・話法・省略）に関わらず、意味と文法が正しければ満点に近い評価とする
-- feedback で模範解答の妥当性を説明するとき、可能なら「糸1（助動詞前置）」または「糸2（空所＋移動）」のどちらの再利用かに1行触れる`;
+- feedback で模範解答の妥当性を説明するとき、可能なら「糸1（助動詞前置）」または「糸2（空所＋移動）」のどちらの再利用かに1行触れる${buildInterrogativeCheckExtra()}`;
+}
+
+function buildQuestionPracticeSection(step, n, questionTarget) {
+  if (step < 3 || step > 7) return '';
+
+  const target = questionTarget ?? getDefaultQuestionTarget(step);
+  const policyBlock = formatQuestionPolicyForPrompt(step);
+
+  return `
+
+疑問文練習（production — 平叙骨格への変形操作）:
+- 設計思想: 疑問文は STEP の構造的中身を差し替えるのではなく、**同じ構造的中身に疑問変形（法=mood）をかぶせる**（構造ターゲット軸 ⊥ 法軸は直交）
+- 糸1 = 助動詞を前に出す（Yes/No疑問）／糸2 = 空所を作り疑問詞を文頭へ（wh疑問）
+- **目標疑問文数（target）**: ${target}問 / ${n}問（ハード指定ではなく目標。スライダー値）
+- STEP疑問ポリシー（タイプはポリシーで自動選択。allowed 外は生成禁止）:
+${policyBlock}
+- **自然さガード（必須）**: 疑問文数は目標値である。**自然さ＞目標数**。当STEPのポリシー上、自然な日本語・英語になる疑問文が目標数に届かない場合は、無理に作らず可能な数に減らすこと。減らした場合は配列の**先頭要素のみ**に \`_questionNote\` で理由を記録する（例: 「Step5の関係詞4カテゴリ網羅を優先し、自然なYes/No疑問は1問にとどめた」）
+- 疑問文として生成した各問には必ず \`"mood": "interrogative"\` を付与。可能なら \`"thread": "糸1"|"糸2"\` も付与（Yes/No→糸1、wh→糸2、間接疑問は埋め込み方に応じて糸1/糸2）
+- 平叙文・否定文は \`mood\` を省略するか \`"declarative"\` とする
+- Step 5: wh疑問は禁止（関係詞=糸2と gap 二重化を避ける）。Yes/No（糸1）のみ
+- Step 7: operationTag「疑問」の問のみ mood=interrogative。倒置/強調（糸1）の問では wh疑問（糸2）を避け、強調cleft（糸2）の問では Yes/No（糸1）を避ける`;
 }
 
 function buildFollowUpReviewSection(reviewMarkdown, n, step, { coreTagSummary } = {}) {
@@ -184,10 +215,13 @@ function buildStepGenerateExtra(step, n) {
   return '';
 }
 
-export function buildGeneratePrompt(stepInfo, n, { step, reviewMarkdown, coreTagSummary } = {}) {
+export function buildGeneratePrompt(stepInfo, n, { step, reviewMarkdown, coreTagSummary, questionTarget } = {}) {
   const seedExamples = formatSeedExamples(stepInfo.exercises);
   const themeAssignment = formatThemeAssignment(n);
   const stepExtra = buildStepGenerateExtra(step, n);
+  const questionPracticeSection = !reviewMarkdown && step >= 3 && step <= 7
+    ? buildQuestionPracticeSection(step, n, questionTarget)
+    : '';
   const essence = getEssenceForStep(step);
   const followUpSection = reviewMarkdown
     ? buildFollowUpReviewSection(reviewMarkdown, n, step, { coreTagSummary })
@@ -244,7 +278,10 @@ ${themeAssignment}
     "nuance": "en（文法・構造の模範）が採点基準となる理由（語順・文法パターンの選択根拠を1〜2文で）。**末尾に1行**でこのSTEPのエッセンスのどれを使っているかを示す",
     "vocabHints": [
       { "jp": "日本語の語（辞書形・基本形）", "en": "英語の原型（動詞原形・名詞単数形など）" }
-    ]
+    ],
+    "mood": "interrogative（疑問文のみ必須）| declarative（任意）",
+    "thread": "糸1|糸2（疑問文で可能なら必須。Step7は全問必須の既存ルールに従う）",
+    "_questionNote": "目標疑問数に届かなかった場合のみ、配列先頭要素に理由を1文で（任意）"
   }
 ]
 
@@ -344,7 +381,7 @@ nuance（必須）:
 - 難易度は日常的な文を使い、学習者が理解できるレベルに保つこと
 - 日本語の訳し方が1通りでない場合、模範解答のニュアンスが日本語に一致するよう jp を調整する。ただし不自然な日本語になる場合は en の方を jp に合わせて書き換える
 - ${n}問で扱う文法パターン（${stepInfo.focus}）もできるだけバラけさせ、似た構文の連続を避ける
-- JSON配列の並び順は問ごとにランダムにする（テーマ割り当ての順番と一致させない）${stepExtra}${followUpSection}`,
+- JSON配列の並び順は問ごとにランダムにする（テーマ割り当ての順番と一致させない）${questionPracticeSection}${stepExtra}${followUpSection}`,
   };
 }
 
@@ -363,7 +400,9 @@ export function buildCheckPrompt(pairs, { step } = {}) {
     ? buildStep3CheckExtra()
     : step === 7
       ? buildStep7CheckExtra()
-      : '';
+      : step >= 4 && step <= 6
+        ? buildInterrogativeCheckExtra()
+        : '';
   const items = pairs
     .map(
       (p, i) =>

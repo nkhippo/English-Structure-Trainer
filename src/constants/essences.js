@@ -29,6 +29,97 @@ export const STEP_ESSENCE = {
   7: `糸1=${STEP7_THREADS.thread1.title.split('：')[0]}（助動詞前置）／糸2=${STEP7_THREADS.thread2.title.split('：')[0]}（空所＋移動）。**糸は疑問・倒置・強調・仮定法倒置を束ねるが、比較・省略・話法はどちらにも乗らない**＝糸は部分的統一原理であって網羅ではない。`,
 };
 
+/** Default interrogative question targets for new sets (Steps 3–7). */
+export const DEFAULT_QUESTION_TARGETS = {
+  3: 3,
+  4: 2,
+  5: 1,
+  6: 2,
+  7: 1,
+};
+
+/**
+ * Per-STEP policy for interrogative sentence practice (production).
+ * @type {Record<number, {
+ *   allowedTypes: string[],
+ *   preferred: string,
+ *   whatToQuestion: string,
+ *   maxNatural: number | string,
+ *   notes?: string,
+ * }>}
+ */
+export const STEP_QUESTION_POLICY = {
+  3: {
+    allowedTypes: ['yesno', 'wh'],
+    preferred: 'mix',
+    whatToQuestion: '動詞情報そのもの（時制・相・態・助動詞）。否定疑問可',
+    maxNatural: 7,
+    notes: '主語wh疑問（"Who broke it?"）は助動詞前置も移動も起きず平叙文に見える——時々混ぜ、学習者が糸1/糸2の実感を持てるようにする',
+  },
+  4: {
+    allowedTypes: ['yesno', 'wh'],
+    preferred: 'wh',
+    whatToQuestion: 'wh が準動詞/前置詞句スロットを尋ねる（例：What do you want to do?）',
+    maxNatural: 5,
+  },
+  5: {
+    allowedTypes: ['yesno'],
+    preferred: 'yesno',
+    whatToQuestion: '関係詞節(Y)を内包したまま主骨格を疑問化（例：その車を直した男はまだここにいますか）',
+    maxNatural: 4,
+  },
+  6: {
+    allowedTypes: ['yesno', 'wh', 'indirect'],
+    preferred: 'indirect',
+    whatToQuestion: 'wh/if 節を名詞節Xとして埋め込む。直接疑問との対比も可',
+    maxNatural: 5,
+    notes: '主語wh疑問（"Who broke it?"）は助動詞前置も移動も起きず平叙文に見える——時々混ぜ、間接疑問との対比で糸1/糸2の実感を持てるようにする',
+  },
+  7: {
+    allowedTypes: ['operationTag'],
+    preferred: '—',
+    whatToQuestion: '糸の二重適用を回避（倒置=糸1のときは wh=糸2、強調cleft=糸2のときは Yes/No=糸1）。operationTag「疑問」の問はこの方針に従う',
+    maxNatural: 2,
+  },
+};
+
+const QUESTION_TYPE_LABELS = {
+  yesno: 'Yes/No疑問（糸1：助動詞前置）',
+  wh: 'wh疑問（糸2：空所を文頭へ）',
+  indirect: '間接疑問（wh/if 節を名詞節Xとして埋め込む）',
+  operationTag: 'operationTag「疑問」に従う（Step 7）',
+};
+
+export function getDefaultQuestionTarget(step) {
+  return DEFAULT_QUESTION_TARGETS[step] ?? 0;
+}
+
+export function getQuestionPolicyForStep(step) {
+  return STEP_QUESTION_POLICY[step] ?? null;
+}
+
+export function formatQuestionPolicyForPrompt(step) {
+  const policy = STEP_QUESTION_POLICY[step];
+  if (!policy) return '';
+
+  const allowed = policy.allowedTypes
+    .map((t) => QUESTION_TYPE_LABELS[t] ?? t)
+    .join(' / ');
+  const preferred = policy.preferred === 'mix'
+    ? 'yesno と wh をバランスよく混ぜる'
+    : policy.preferred === '—'
+      ? '（Step 7：operationTag と糸の相性で自動選択）'
+      : `${QUESTION_TYPE_LABELS[policy.preferred] ?? policy.preferred} を優先`;
+  const maxNatural = typeof policy.maxNatural === 'number'
+    ? `${policy.maxNatural}問`
+    : String(policy.maxNatural);
+
+  return `- 許可タイプ（allowedTypes）: ${allowed} — **allowed 外のタイプは生成しない**
+- 優先（preferred）: ${preferred}
+- 何を疑問にするか: ${policy.whatToQuestion}
+- 自然な上限（maxNatural）: ${maxNatural}${policy.notes ? `\n- 備考: ${policy.notes}` : ''}`;
+}
+
 /** MECE coverage rules per STEP — appended to generate extras. */
 export const STEP_COVERAGE = {
   3: `- 既存「疑問/否定を最低2問」に加え、**うち1問は wh疑問**（糸2の予告編）

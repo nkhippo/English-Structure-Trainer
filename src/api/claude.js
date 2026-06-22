@@ -17,6 +17,8 @@ export const CHECK_BATCH_SIZE = 1;
 
 /** Number of exercises generated and shown per session. */
 export const EXERCISES_PER_SET = 7;
+/** Default interrogative sentences in a new Step 3 set (out of EXERCISES_PER_SET). */
+export const DEFAULT_INTERROGATIVE_COUNT = 2;
 /** Phrase quiz: questions per API generation (sampled from level bank). */
 export const PHRASE_QUESTIONS_PER_SET = 10;
 /** Points awarded per question (total = EXERCISES_PER_SET × POINTS_PER_QUESTION). */
@@ -281,8 +283,8 @@ function normalizeExercise(ex) {
  * @param {number} n  Number of exercises to generate (default EXERCISES_PER_SET)
  * @returns {Promise<Exercise[]>}
  */
-export async function generateExercises(apiKey, stepInfo, n = EXERCISES_PER_SET, { step, reviewMarkdown, coreTagSummary } = {}) {
-  const { system, user } = buildGeneratePrompt(stepInfo, n, { step, reviewMarkdown, coreTagSummary });
+export async function generateExercises(apiKey, stepInfo, n = EXERCISES_PER_SET, { step, reviewMarkdown, coreTagSummary, interrogativeCount } = {}) {
+  const { system, user } = buildGeneratePrompt(stepInfo, n, { step, reviewMarkdown, coreTagSummary, interrogativeCount });
   const raw = await callClaude(apiKey, system, user, {
     prefill: '[',
     maxTokens: MAX_TOKENS_GENERATE,

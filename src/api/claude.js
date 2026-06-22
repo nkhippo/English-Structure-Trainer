@@ -17,7 +17,7 @@ export const CHECK_BATCH_SIZE = 1;
 
 /** Number of exercises generated and shown per session. */
 export const EXERCISES_PER_SET = 7;
-/** Default interrogative sentences in a new set (out of EXERCISES_PER_SET, Steps 3–7). */
+/** Default interrogative sentences in a new Step 3 set (out of EXERCISES_PER_SET). */
 export const DEFAULT_INTERROGATIVE_COUNT = 2;
 /** Phrase quiz: questions per API generation (sampled from level bank). */
 export const PHRASE_QUESTIONS_PER_SET = 10;

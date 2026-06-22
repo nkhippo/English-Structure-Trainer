@@ -1,9 +1,10 @@
 import { buildGeneratePrompt, buildCheckPrompt, buildEnNativePrompt, shuffleArray } from '../prompts/index.js';
-import { ERROR_TAG_CODES } from '../constants/essences.js';
+import { ERROR_TAG_CODES, getEffectiveQuestionTarget } from '../constants/essences.js';
 import { saveLastStep7TagSet } from '../constants/step7.js';
 import { buildPhraseGeneratePrompt, buildPhraseFeedbackEnrichPrompt } from '../prompts/phraseQuiz.js';
 import { getLevelConfig, buildPhraseChoices, planPhraseSession } from '../constants/framingExpressions.js';
 import { normalizePart } from '../utils/parts.js';
+import { enrichInterrogativeMetadata, countInterrogativeExercises } from '../utils/interrogative.js';
 
 const ENDPOINT = 'https://api.anthropic.com/v1/messages';
 const MODEL_GENERATE = 'claude-haiku-4-5-20251001';
@@ -258,7 +259,7 @@ async function callClaude(apiKey, system, userMessage, { prefill, debug, maxToke
 }
 
 function normalizeExercise(ex) {
-  return {
+  const base = {
     ...ex,
     parts: (ex.parts || []).map(normalizePart).filter(Boolean),
     vocabHints: Array.isArray(ex.vocabHints) ? ex.vocabHints : [],
@@ -269,8 +270,19 @@ function normalizeExercise(ex) {
     cefr: typeof ex.cefr === 'string' ? ex.cefr : undefined,
     thread: typeof ex.thread === 'string' ? ex.thread : undefined,
     mood: typeof ex.mood === 'string' ? ex.mood : undefined,
+    questionType: typeof ex.questionType === 'string' ? ex.questionType : undefined,
     _questionNote: typeof ex._questionNote === 'string' ? ex._questionNote : undefined,
   };
+  return enrichInterrogativeMetadata(base);
+}
+
+function buildInterrogativeRetryUser(user, step, effectiveTarget) {
+  return `${user}
+
+【再生成指示 — 必須】
+前回の出力に mood=interrogative の問が不足していた。
+必ず effectiveTarget=${effectiveTarget} 件以上の疑問文を含めること（各問に mood=interrogative と questionType を付与）。
+Step 6 では間接疑問（whether/wh 名詞節X）も mood=interrogative としてカウントする。0件での返却は不可。`;
 }
 
 // ── Public API ───────────────────────────────────────────────────────────────
@@ -285,12 +297,26 @@ function normalizeExercise(ex) {
  */
 export async function generateExercises(apiKey, stepInfo, n = EXERCISES_PER_SET, { step, reviewMarkdown, coreTagSummary, questionTarget } = {}) {
   const { system, user } = buildGeneratePrompt(stepInfo, n, { step, reviewMarkdown, coreTagSummary, questionTarget });
-  const raw = await callClaude(apiKey, system, user, {
+  const callOpts = {
     prefill: '[',
     maxTokens: MAX_TOKENS_GENERATE,
     debug: { operation: 'generate', step: step ?? null },
-  });
-  const exercises = parseJsonArray(raw);
+  };
+
+  let raw = await callClaude(apiKey, system, user, callOpts);
+  let exercises = parseJsonArray(raw);
+
+  const effectiveTarget = !reviewMarkdown && step >= 3 && step <= 7
+    ? getEffectiveQuestionTarget(step, questionTarget ?? 0)
+    : 0;
+
+  if (effectiveTarget > 0 && countInterrogativeExercises(exercises.map(normalizeExercise)) < effectiveTarget) {
+      raw = await callClaude(apiKey, system, buildInterrogativeRetryUser(user, step, effectiveTarget), {
+        ...callOpts,
+        debug: { operation: 'generate-retry-interrogative', step: step ?? null },
+      });
+      exercises = parseJsonArray(raw);
+  }
 
   if (!Array.isArray(exercises) || exercises.length === 0) {
     throw new Error('生成結果が不正です');

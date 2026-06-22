@@ -17,7 +17,8 @@ import { formatResultsMarkdown } from './utils/formatResultsMarkdown.js';
 import { getFollowUpCount, loadReviewHistory, saveReviewHistory } from './utils/reviewHistory.js';
 import { parseReviewMarkdown } from './utils/parseReviewMarkdown.js';
 import ReviewMarkdownPanel from './components/ReviewMarkdownPanel.jsx';
-import { aggregateCoreErrorTags, formatCoreTagSummary, DEFAULT_QUESTION_TARGETS } from './constants/essences.js';
+import { aggregateCoreErrorTags, formatCoreTagSummary, DEFAULT_QUESTION_TARGETS, getEffectiveQuestionTarget } from './constants/essences.js';
+import { countInterrogativeExercises } from './utils/interrogative.js';
 
 const C = { page: '#FAF9F6', card: '#FFFFFF', line: '#EAE8E1', t1: '#1C1B19', t2: '#6B6862', t3: '#9A968D', ink: '#1C1B19' };
 
@@ -76,6 +77,8 @@ export default function App() {
     : 0;
   const showSessionFollowUp = sessionFollowUpCount > 0;
   const questionTarget = questionTargetByStep[step] ?? DEFAULT_QUESTION_TARGETS[step] ?? 0;
+  const effectiveQuestionTarget = getEffectiveQuestionTarget(step, questionTarget);
+  const interrogativeCount = countInterrogativeExercises(exercises);
   const questionNote = exercises.find((ex) => ex._questionNote)?._questionNote;
 
   // ── Step switch ─────────────────────────────────────────────────────────────
@@ -376,6 +379,14 @@ export default function App() {
                   background: '#F5F4F0', border: `1px solid ${C.line}`,
                 }}>
                   {questionNote}
+                </p>
+              )}
+              {exercises.length > 0 && questionTarget > 0 && (
+                <p style={{ fontSize: 12, color: C.t2, margin: '8px 0 0', textAlign: 'center' }}>
+                  疑問文: {interrogativeCount}問
+                  {effectiveQuestionTarget !== questionTarget
+                    ? `（目標 ${questionTarget}問 → 必達 ${effectiveQuestionTarget}問）`
+                    : ` / 目標 ${questionTarget}問`}
                 </p>
               )}
               {revealed && showSessionFollowUp && (

@@ -9,6 +9,7 @@ import {
   formatErrorTaxonomyForPrompt,
   formatQuestionPolicyForPrompt,
   getDefaultQuestionTarget,
+  getEffectiveQuestionTarget,
   CORE_ERROR_CODES,
 } from '../constants/essences.js';
 import { formatCompressedParts } from '../utils/parts.js';
@@ -157,25 +158,61 @@ Step 7 採点の補足（必須）:
 - feedback で模範解答の妥当性を説明するとき、可能なら「糸1（助動詞前置）」または「糸2（空所＋移動）」のどちらの再利用かに1行触れる${buildInterrogativeCheckExtra()}`;
 }
 
+function buildStep6QuestionExtra(effectiveTarget) {
+  return `
+Step 6 疑問文の設計（必須 — 間接疑問も疑問文練習にカウント）:
+- **間接疑問は英文が平叙文・句点終わりでも mood=interrogative 必須**。questionType=indirect を付与
+- jp には疑問の手がかりを必ず含める（〜かどうか、何を〜か、どこで〜か、知りたい、確認したい 等）
+- 例（間接・wh名詞節X）: jp「彼が何を言ったのか知りたい」→ en "I want to know what he said." / mood=interrogative / questionType=indirect / thread=糸2
+- 例（間接・whether）: jp「会議が延期されたかどうか確認したい」→ en "I want to check whether the meeting was postponed." / mood=interrogative / questionType=indirect / thread=糸1
+- 例（直接・対比）: jp「会議は延期されましたか」→ en "Was the meeting postponed?" / mood=interrogative / questionType=yesno / thread=糸1
+- ${effectiveTarget}問のうち **過半数は indirect**（wh/if 節を名詞節Xとして埋め込む）。残りは直接 yesno/wh
+- Y+Z キーセンテンス型・副詞節(Z)・名詞節(X)の MECE 網羅と**両立させる**（例: when節 + wh名詞節X を1問に同居可）`;
+}
+
 function buildQuestionPracticeSection(step, n, questionTarget) {
   if (step < 3 || step > 7) return '';
 
-  const target = questionTarget ?? getDefaultQuestionTarget(step);
+  const requested = questionTarget ?? getDefaultQuestionTarget(step);
+  if (requested <= 0) return '';
+
+  const effectiveTarget = getEffectiveQuestionTarget(step, requested);
   const policyBlock = formatQuestionPolicyForPrompt(step);
+  const step6Extra = step === 6 ? buildStep6QuestionExtra(effectiveTarget) : '';
+  const cappedNote = requested > effectiveTarget
+    ? `\n- スライダー ${requested}問は maxNatural により effectiveTarget=${effectiveTarget}問が必達上限`
+    : '';
 
   return `
 
-疑問文練習（production — 平叙骨格への変形操作）:
+疑問文練習（production — **最優先制約**。Step MECE 網羅と両立させる）:
 - 設計思想: 疑問文は STEP の構造的中身を差し替えるのではなく、**同じ構造的中身に疑問変形（法=mood）をかぶせる**（構造ターゲット軸 ⊥ 法軸は直交）
 - 糸1 = 助動詞を前に出す（Yes/No疑問）／糸2 = 空所を作り疑問詞を文頭へ（wh疑問）
-- **目標疑問文数（target）**: ${target}問 / ${n}問（ハード指定ではなく目標。スライダー値）
+- **必達疑問文数（effectiveTarget）**: ${effectiveTarget}問 / ${n}問 — **mood=interrogative がこの件数以上含まれること（0件不可）**
+- スライダー目標（requested）: ${requested}問${cappedNote}
 - STEP疑問ポリシー（タイプはポリシーで自動選択。allowed 外は生成禁止）:
 ${policyBlock}
-- **自然さガード（必須）**: 疑問文数は目標値である。**自然さ＞目標数**。当STEPのポリシー上、自然な日本語・英語になる疑問文が目標数に届かない場合は、無理に作らず可能な数に減らすこと。減らした場合は配列の**先頭要素のみ**に \`_questionNote\` で理由を記録する（例: 「Step5の関係詞4カテゴリ網羅を優先し、自然なYes/No疑問は1問にとどめた」）
-- 疑問文として生成した各問には必ず \`"mood": "interrogative"\` を付与。可能なら \`"thread": "糸1"|"糸2"\` も付与（Yes/No→糸1、wh→糸2、間接疑問は埋め込み方に応じて糸1/糸2）
-- 平叙文・否定文は \`mood\` を省略するか \`"declarative"\` とする
+- **生成順序（必須）**:
+  1. 先に ${effectiveTarget} 問分の疑問文スロットを確定（mood=interrogative、questionType、thread）
+  2. 残り ${n - effectiveTarget} 問を平叙文（mood=declarative または省略）で設計
+  3. 返却直前に mood=interrogative の件数を数え、${effectiveTarget} 未満なら疑問文を追加してから返す
+- 各疑問文に必須: \`"mood": "interrogative"\`、\`"questionType": "yesno"|"wh"|"indirect"\`、可能なら \`"thread": "糸1"|"糸2"\`
+- **間接疑問（indirect）も疑問文にカウント**。英文が ? で終わらなくても mood=interrogative を付ける
+- 平叙文のみの問は mood=declarative または省略
+- **自然さガード**: effectiveTarget 未満にするのは、ポリシー上どうしても自然な疑問文が作れない場合**のみ**。その場合は先頭要素に \`_questionNote\` で理由と実際の件数を記録
 - Step 5: wh疑問は禁止（関係詞=糸2と gap 二重化を避ける）。Yes/No（糸1）のみ
-- Step 7: operationTag「疑問」の問のみ mood=interrogative。倒置/強調（糸1）の問では wh疑問（糸2）を避け、強調cleft（糸2）の問では Yes/No（糸1）を避ける`;
+- Step 7: operationTag「疑問」の問に mood=interrogative。倒置/強調（糸1）の問では wh疑問（糸2）を避け、強調cleft（糸2）の問では Yes/No（糸1）を避ける${step6Extra}`;
+}
+
+function buildQuestionGenerationSteps(step, n, questionTarget) {
+  const requested = questionTarget ?? 0;
+  if (requested <= 0 || step < 3 || step > 7) return '';
+
+  const effectiveTarget = getEffectiveQuestionTarget(step, requested);
+  if (effectiveTarget <= 0) return '';
+
+  return `
+0. **疑問文 ${effectiveTarget} 問を先に割り当て**（各問 mood=interrogative / questionType / thread を決める。Step 6 は間接疑問を中心に）`;
 }
 
 function buildFollowUpReviewSection(reviewMarkdown, n, step, { coreTagSummary } = {}) {
@@ -222,6 +259,9 @@ export function buildGeneratePrompt(stepInfo, n, { step, reviewMarkdown, coreTag
   const questionPracticeSection = !reviewMarkdown && step >= 3 && step <= 7
     ? buildQuestionPracticeSection(step, n, questionTarget)
     : '';
+  const questionGenerationStep = !reviewMarkdown && step >= 3 && step <= 7
+    ? buildQuestionGenerationSteps(step, n, questionTarget)
+    : '';
   const essence = getEssenceForStep(step);
   const followUpSection = reviewMarkdown
     ? buildFollowUpReviewSection(reviewMarkdown, n, step, { coreTagSummary })
@@ -231,6 +271,9 @@ export function buildGeneratePrompt(stepInfo, n, { step, reviewMarkdown, coreTag
     system: `あなたは英語教育の専門家です。
 日本語→英語の翻訳練習問題を生成してください。
 必ず有効なJSONのみを返してください。マークダウンや説明文は一切含めないでください。
+${!reviewMarkdown && (questionTarget ?? 0) > 0 && step >= 3 && step <= 7
+    ? `\n疑問文必達: 返却JSON配列に mood=interrogative の要素を effectiveTarget=${getEffectiveQuestionTarget(step, questionTarget ?? 0)} 件以上含めること（0件は不可）。`
+    : ''}
 
 JSONの厳守ルール:
 - 文字列値はダブルクォートのみ使用（シングルクォート不可）
@@ -253,9 +296,9 @@ ${seedExamples || '  （参考例なし）'}
 - 各問に異なるテーマを1つずつ割り当て、jp の内容がそのテーマになるようにする
 - 同じセット内でテーマ・場面・主語・文型の重複を避ける（例: 「毎日走ることで〜」のような同型文を複数問に使わない）
 - 今回のテーマ割り当て（この順で生成し、最後に並びをランダムに入れ替える）:
-${themeAssignment}
+${themeAssignment}${questionPracticeSection}
 
-生成手順（必ずこの順番で）:
+生成手順（必ずこの順番で）:${questionGenerationStep}
 1. まず日本語文 jp を、母語話者が違和感なく言える自然な文として書く
 2. jp の意味を正確に英訳して en（文法・構造の模範）と parts を作る
 3. 英文の構文要件（後置修飾など）を満たすために、jp を英語語順に無理やり合わせない
@@ -279,7 +322,8 @@ ${themeAssignment}
     "vocabHints": [
       { "jp": "日本語の語（辞書形・基本形）", "en": "英語の原型（動詞原形・名詞単数形など）" }
     ],
-    "mood": "interrogative（疑問文のみ必須）| declarative（任意）",
+    "mood": "interrogative（疑問文のみ必須）| declarative（平叙文）",
+    "questionType": "yesno|wh|indirect（mood=interrogative の問のみ必須）",
     "thread": "糸1|糸2（疑問文で可能なら必須。Step7は全問必須の既存ルールに従う）",
     "_questionNote": "目標疑問数に届かなかった場合のみ、配列先頭要素に理由を1文で（任意）"
   }
@@ -381,7 +425,7 @@ nuance（必須）:
 - 難易度は日常的な文を使い、学習者が理解できるレベルに保つこと
 - 日本語の訳し方が1通りでない場合、模範解答のニュアンスが日本語に一致するよう jp を調整する。ただし不自然な日本語になる場合は en の方を jp に合わせて書き換える
 - ${n}問で扱う文法パターン（${stepInfo.focus}）もできるだけバラけさせ、似た構文の連続を避ける
-- JSON配列の並び順は問ごとにランダムにする（テーマ割り当ての順番と一致させない）${questionPracticeSection}${stepExtra}${followUpSection}`,
+- JSON配列の並び順は問ごとにランダムにする（テーマ割り当ての順番と一致させない）${stepExtra}${followUpSection}`,
   };
 }
 

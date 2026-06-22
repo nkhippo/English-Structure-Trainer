@@ -94,6 +94,13 @@ export function getDefaultQuestionTarget(step) {
   return DEFAULT_QUESTION_TARGETS[step] ?? 0;
 }
 
+export function getEffectiveQuestionTarget(step, questionTarget) {
+  if (!questionTarget || questionTarget <= 0) return 0;
+  const policy = STEP_QUESTION_POLICY[step];
+  const maxNatural = policy && typeof policy.maxNatural === 'number' ? policy.maxNatural : 7;
+  return Math.min(questionTarget, maxNatural);
+}
+
 export function getQuestionPolicyForStep(step) {
   return STEP_QUESTION_POLICY[step] ?? null;
 }

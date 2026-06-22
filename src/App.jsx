@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { STEPS } from './constants/steps.js';
-import { getStoredApiKey, clearApiKey, generateExercises, generateEnNative, checkAnswers, EXERCISES_PER_SET, DEFAULT_INTERROGATIVE_COUNT, POINTS_PER_QUESTION } from './api/claude.js';
+import { getStoredApiKey, clearApiKey, generateExercises, generateEnNative, checkAnswers, EXERCISES_PER_SET, POINTS_PER_QUESTION } from './api/claude.js';
 import ApiKeyInput from './components/ApiKeyInput.jsx';
 import StepTabs from './components/StepTabs.jsx';
 import QuestionCard from './components/QuestionCard.jsx';
@@ -43,7 +43,6 @@ export default function App() {
   const [markdownFileError, setMarkdownFileError] = useState('');
   const [markdownFileSuccess, setMarkdownFileSuccess] = useState('');
   const [enNativeLoadingKey, setEnNativeLoadingKey] = useState(null);
-  const [interrogativeCount, setInterrogativeCount] = useState(DEFAULT_INTERROGATIVE_COUNT);
 
   const isPhrase = step === 'phrase';
   const sd = isPhrase ? null : STEPS[step];
@@ -104,10 +103,7 @@ export default function App() {
     setGeneratingMode('new');
     setError('');
     try {
-      const generated = await generateExercises(apiKey, sd, EXERCISES_PER_SET, {
-        step,
-        interrogativeCount: step === 3 ? interrogativeCount : undefined,
-      });
+      const generated = await generateExercises(apiKey, sd, EXERCISES_PER_SET, { step });
       setExercisesByStep((prev) => ({ ...prev, [step]: generated }));
       resetStepSession();
     } catch (e) {
@@ -331,32 +327,7 @@ export default function App() {
             <div style={{ marginBottom: 16 }}>
               <StepInfoAccordion step={step} />
               {showCreateButton && (
-                <>
-                  {step === 3 && (
-                    <div style={{
-                      display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10,
-                      padding: '10px 14px', borderRadius: 10,
-                      background: C.card, border: `1px solid ${C.line}`,
-                    }}>
-                      <label htmlFor="interrogative-count" style={{ fontSize: 13, fontWeight: 600, color: C.t1, flexShrink: 0 }}>
-                        疑問文の数
-                      </label>
-                      <input
-                        id="interrogative-count"
-                        type="range"
-                        min={1}
-                        max={EXERCISES_PER_SET}
-                        value={interrogativeCount}
-                        onChange={(e) => setInterrogativeCount(Number(e.target.value))}
-                        disabled={isGenerating}
-                        style={{ flex: 1, accentColor: C.ink }}
-                      />
-                      <span style={{ fontSize: 13, fontWeight: 700, color: C.t1, minWidth: 52, textAlign: 'right' }}>
-                        {interrogativeCount} / {EXERCISES_PER_SET}問
-                      </span>
-                    </div>
-                  )}
-                  <button type="button" onClick={handleGenerate} disabled={isGenerating} style={{
+                <button type="button" onClick={handleGenerate} disabled={isGenerating} style={{
                   width: '100%', padding: 14, borderRadius: 12, border: 'none',
                   background: C.ink, color: '#fff', fontSize: 15, fontWeight: 700,
                   cursor: isGenerating ? 'not-allowed' : 'pointer',
@@ -364,7 +335,6 @@ export default function App() {
                 }}>
                   {isGeneratingNew ? '問題を作成中…' : '問題を作成する'}
                 </button>
-                </>
               )}
               {revealed && showSessionFollowUp && (
                 <button type="button" onClick={handleSessionFollowUp} disabled={isGenerating} style={{

@@ -79,18 +79,13 @@ function formatThemeAssignment(n) {
     .join('\n');
 }
 
-function buildStep3GenerateExtra(n, interrogativeCount) {
-  const interrogativeBlock = interrogativeCount != null
-    ? `- ${n}問のうち **ちょうど${interrogativeCount}問** は疑問文とする（残りは平叙文または否定文）
-- ${interrogativeCount >= 2
-      ? '疑問文：Yes/No疑問（助動詞前置）と wh疑問（空所を文頭へ）の両方をセット内でカバーする'
-      : '疑問文：Yes/No疑問（助動詞前置）または wh疑問（空所を文頭へ）'}
-- 否定文（残りで該当する場合）：助動詞 + not（短縮形 don't / doesn't / didn't / hasn't 等）を含めてよい
-- 日本語 jp には疑問文では「〜ですか」「〜でしょうか」など、否定文では「〜ません」「〜ない」などの手がかりを自然に含める`
-    : '';
-
+function buildStep3GenerateExtra(n) {
   return `
-Step 3 固有の出題制約（必須）:${interrogativeBlock ? `\n${interrogativeBlock}` : ''}
+Step 3 固有の出題制約（必須）:
+- ${n}問のうち **少なくとも2問** は疑問文または否定文を含める
+- 疑問文：Yes/No疑問（助動詞前置）と wh疑問（空所を文頭へ）の両方をセット内でカバーする
+- 否定文：助動詞 + not（短縮形 don't / doesn't / didn't / hasn't 等）を含める
+- 日本語 jp には「〜ですか」「〜ません」「〜ない」など疑問・否定の手がかりを自然に含める
 - 時制・相・態・助動詞の問題も引き続きバランスよく含める
 
 Step 3 MECE網羅規則:
@@ -180,8 +175,8 @@ ${reviewMarkdown}
 - テーマ・場面・主語は前回と重ならないよう新しい題材を使う`;
 }
 
-function buildStepGenerateExtra(step, n, { interrogativeCount } = {}) {
-  if (step === 3) return buildStep3GenerateExtra(n, interrogativeCount);
+function buildStepGenerateExtra(step, n) {
+  if (step === 3) return buildStep3GenerateExtra(n);
   if (step === 4) return buildStep4GenerateExtra();
   if (step === 5) return buildStep5GenerateExtra();
   if (step === 6) return buildStep6GenerateExtra();
@@ -189,12 +184,10 @@ function buildStepGenerateExtra(step, n, { interrogativeCount } = {}) {
   return '';
 }
 
-export function buildGeneratePrompt(stepInfo, n, { step, reviewMarkdown, coreTagSummary, interrogativeCount } = {}) {
+export function buildGeneratePrompt(stepInfo, n, { step, reviewMarkdown, coreTagSummary } = {}) {
   const seedExamples = formatSeedExamples(stepInfo.exercises);
   const themeAssignment = formatThemeAssignment(n);
-  const stepExtra = buildStepGenerateExtra(step, n, {
-    interrogativeCount: reviewMarkdown ? undefined : interrogativeCount,
-  });
+  const stepExtra = buildStepGenerateExtra(step, n);
   const essence = getEssenceForStep(step);
   const followUpSection = reviewMarkdown
     ? buildFollowUpReviewSection(reviewMarkdown, n, step, { coreTagSummary })

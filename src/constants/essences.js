@@ -31,11 +31,11 @@ export const STEP_ESSENCE = {
 
 /** Default interrogative question targets for new sets (Steps 3–7). */
 export const DEFAULT_QUESTION_TARGETS = {
-  3: 3,
+  3: 2,
   4: 2,
-  5: 1,
+  5: 2,
   6: 2,
-  7: 1,
+  7: 2,
 };
 
 /**

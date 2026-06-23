@@ -361,25 +361,63 @@ export default function App() {
                     padding: '10px 14px', borderRadius: 10,
                     background: C.card, border: `1px solid ${C.line}`,
                   }}>
-                    <label htmlFor="question-target" style={{ fontSize: 13, fontWeight: 600, color: C.t1, flexShrink: 0 }}>
+                    <span id="question-target-label" style={{ fontSize: 13, fontWeight: 600, color: C.t1, flexShrink: 0 }}>
                       疑問文の目標数
-                    </label>
-                    <input
-                      id="question-target"
-                      type="range"
-                      min={0}
-                      max={maxNatural}
-                      value={questionTarget}
-                      onChange={(e) => setQuestionTargetByStep((prev) => ({
-                        ...prev,
-                        [step]: Number(e.target.value),
-                      }))}
-                      disabled={isGenerating}
-                      style={{ flex: 1, accentColor: C.ink }}
-                    />
-                    <span style={{ fontSize: 13, fontWeight: 700, color: C.t1, minWidth: 52, textAlign: 'right' }}>
-                      {questionTarget} / {maxNatural}問
                     </span>
+                    <div
+                      role="group"
+                      aria-labelledby="question-target-label"
+                      style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}
+                    >
+                      <button
+                        type="button"
+                        aria-label="疑問文の目標数を減らす"
+                        onClick={() => setQuestionTargetByStep((prev) => ({
+                          ...prev,
+                          [step]: Math.max(0, questionTarget - 1),
+                        }))}
+                        disabled={isGenerating || questionTarget <= 0}
+                        style={{
+                          width: 32, height: 32, borderRadius: 8,
+                          border: `1px solid ${C.line}`, background: C.page,
+                          color: C.t1, fontSize: 18, lineHeight: 1,
+                          cursor: isGenerating || questionTarget <= 0 ? 'not-allowed' : 'pointer',
+                          opacity: isGenerating || questionTarget <= 0 ? 0.4 : 1,
+                          fontFamily: 'inherit', padding: 0,
+                        }}
+                      >
+                        −
+                      </button>
+                      <span
+                        id="question-target"
+                        aria-live="polite"
+                        style={{ fontSize: 15, fontWeight: 700, color: C.t1, minWidth: 20, textAlign: 'center' }}
+                      >
+                        {questionTarget}
+                      </span>
+                      <button
+                        type="button"
+                        aria-label="疑問文の目標数を増やす"
+                        onClick={() => setQuestionTargetByStep((prev) => ({
+                          ...prev,
+                          [step]: Math.min(maxNatural, questionTarget + 1),
+                        }))}
+                        disabled={isGenerating || questionTarget >= maxNatural}
+                        style={{
+                          width: 32, height: 32, borderRadius: 8,
+                          border: `1px solid ${C.line}`, background: C.page,
+                          color: C.t1, fontSize: 18, lineHeight: 1,
+                          cursor: isGenerating || questionTarget >= maxNatural ? 'not-allowed' : 'pointer',
+                          opacity: isGenerating || questionTarget >= maxNatural ? 0.4 : 1,
+                          fontFamily: 'inherit', padding: 0,
+                        }}
+                      >
+                        +
+                      </button>
+                      <span style={{ fontSize: 12, color: C.t2, minWidth: 48 }}>
+                        / {maxNatural}問
+                      </span>
+                    </div>
                   </div>
                   <button type="button" onClick={handleGenerate} disabled={isGenerating} style={{
                   width: '100%', padding: 14, borderRadius: 12, border: 'none',

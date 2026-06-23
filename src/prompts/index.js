@@ -82,17 +82,26 @@ function formatThemeAssignment(n) {
     .join('\n');
 }
 
-function buildStep3GenerateExtra(n) {
-  return `
-Step 3 固有の出題制約（必須）:
-- ${n}問のうち **少なくとも2問** は疑問文または否定文を含める
+function buildStep3GenerateExtra(n, questionTarget = 0) {
+  const useQuestionPractice = getEffectiveQuestionTarget(3, questionTarget) > 0;
+  const interrogativeBlock = useQuestionPractice
+    ? `- 疑問文の件数・種類は上記「疑問文練習」セクションに従う（本節の旧「少なくとも2問は疑問/否定」ルールは適用しない）
+- 否定文のみの問は mood=declarative とする（否定疑問は mood=interrogative 可）`
+    : `- ${n}問のうち **少なくとも2問** は疑問文または否定文を含める
 - 疑問文：Yes/No疑問（助動詞前置）と wh疑問（空所を文頭へ）の両方をセット内でカバーする
 - 否定文：助動詞 + not（短縮形 don't / doesn't / didn't / hasn't 等）を含める
-- 日本語 jp には「〜ですか」「〜ません」「〜ない」など疑問・否定の手がかりを自然に含める
+- 日本語 jp には「〜ですか」「〜ません」「〜ない」など疑問・否定の手がかりを自然に含める`;
+  const coverageBlock = useQuestionPractice
+    ? `- 時制×相は「現在/過去 × 単純/進行/完了」をサンプリング網羅`
+    : getCoverageForStep(3);
+
+  return `
+Step 3 固有の出題制約（必須）:
+${interrogativeBlock}
 - 時制・相・態・助動詞の問題も引き続きバランスよく含める
 
 Step 3 MECE網羅規則:
-${getCoverageForStep(3)}`;
+${coverageBlock}`;
 }
 
 function buildStep4GenerateExtra() {
@@ -304,8 +313,8 @@ ${reviewMarkdown}
 - テーマ・場面・主語は前回と重ならないよう新しい題材を使う`;
 }
 
-function buildStepGenerateExtra(step, n) {
-  if (step === 3) return buildStep3GenerateExtra(n);
+function buildStepGenerateExtra(step, n, questionTarget = 0) {
+  if (step === 3) return buildStep3GenerateExtra(n, questionTarget);
   if (step === 4) return buildStep4GenerateExtra();
   if (step === 5) return buildStep5GenerateExtra();
   if (step === 6) return buildStep6GenerateExtra();
@@ -316,7 +325,7 @@ function buildStepGenerateExtra(step, n) {
 export function buildGeneratePrompt(stepInfo, n, { step, reviewMarkdown, coreTagSummary, questionTarget } = {}) {
   const seedExamples = formatSeedExamples(stepInfo.exercises);
   const themeAssignment = formatThemeAssignment(n);
-  const stepExtra = buildStepGenerateExtra(step, n);
+  const stepExtra = buildStepGenerateExtra(step, n, questionTarget ?? 0);
   const questionPracticeSection = !reviewMarkdown && step >= 3 && step <= 7
     ? buildQuestionPracticeSection(step, n, questionTarget)
     : '';
@@ -497,11 +506,17 @@ export { shuffleArray };
  * Compact regenerate prompt when the first response lacks enough interrogative items.
  * Avoids duplicating the full user prompt (prevents oversized requests / mobile "Load failed").
  */
-export function buildInterrogativeRegeneratePrompt(stepInfo, step, n, effectiveTarget) {
+export function buildInterrogativeRegeneratePrompt(stepInfo, step, n, effectiveTarget, questionTarget = effectiveTarget) {
   const policyBlock = formatQuestionPolicyForPrompt(step);
   const stepQuestionExtra = buildStepQuestionExtra(step, effectiveTarget);
   const coverage = getCoverageForStep(step);
   const hint = STEP_QUESTION_GENERATION_HINTS[step] ?? '';
+  const cappedNote = questionTarget > effectiveTarget
+    ? `\nスライダー ${questionTarget}問 → maxNatural により必達 ${effectiveTarget}問`
+    : '';
+  const step7Fields = step === 7
+    ? `\nStep 7 追加フィールド（全問必須）: operationTag, cefr, thread。疑問文 ${effectiveTarget} 件は operationTag「疑問」+ mood=interrogative。`
+    : '';
 
   return {
     system: `あなたは英語教育の専門家です。
@@ -517,11 +532,11 @@ JSONの厳守ルール:
 
     user: `Step ${step}「${stepInfo.sub}」（${stepInfo.focus}）の翻訳練習を${n}問、JSON配列のみで生成してください。
 
-前回は mood=interrogative が不足していました。今回は必ず ${effectiveTarget} 件以上の疑問文を含めてください。
+前回は mood=interrogative が不足していました。今回は必ず ${effectiveTarget} 件以上の疑問文を含めてください。${cappedNote}
 
 疑問文の設計方針: ${hint}
 ${policyBlock}
-${stepQuestionExtra}
+${stepQuestionExtra}${step7Fields}
 
 Step MECE 網羅（平叙文と両立）:
 ${coverage}

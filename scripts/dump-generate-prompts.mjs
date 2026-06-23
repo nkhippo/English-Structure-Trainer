@@ -8,7 +8,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { STEPS } from '../src/constants/steps.js';
 import { buildGeneratePrompt } from '../src/prompts/index.js';
-import { DEFAULT_QUESTION_TARGETS } from '../src/constants/essences.js';
+import { DEFAULT_QUESTION_TARGETS, getEffectiveQuestionTarget } from '../src/constants/essences.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUT_DIR = path.join(__dirname, '..', 'prompt-dumps');
@@ -24,8 +24,15 @@ for (let step = 3; step <= 7; step++) {
   ];
 
   for (const { label, questionTarget } of variants) {
+    const effectiveTarget = getEffectiveQuestionTarget(step, questionTarget);
     const { system, user } = buildGeneratePrompt(stepInfo, N, { step, questionTarget });
-    const content = `# Step ${step} — ${label} (questionTarget=${questionTarget})
+    const content = `# Step ${step} — ${label}
+
+- questionTarget（スライダー）: ${questionTarget}
+- effectiveTarget（必達）: ${effectiveTarget}
+- maxNatural: ${DEFAULT_QUESTION_TARGETS[step] === questionTarget && label === 'default' ? '（既定値）' : `スライダー${questionTarget} → 必達${effectiveTarget}`}
+
+生成元: \`buildGeneratePrompt()\` in \`src/prompts/index.js\`
 
 ## System
 

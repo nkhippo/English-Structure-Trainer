@@ -332,7 +332,7 @@ export async function generateExercises(apiKey, stepInfo, n = EXERCISES_PER_SET,
     : 0;
 
   if (effectiveTarget > 0 && countInterrogativeExercises(exercises.map(normalizeExercise)) < effectiveTarget) {
-    const retry = buildInterrogativeRegeneratePrompt(stepInfo, step, n, effectiveTarget);
+    const retry = buildInterrogativeRegeneratePrompt(stepInfo, step, n, effectiveTarget, questionTarget ?? effectiveTarget);
     raw = await callClaude(apiKey, retry.system, retry.user, {
       ...callOpts,
       debug: { operation: 'generate-retry-interrogative', step: step ?? null },

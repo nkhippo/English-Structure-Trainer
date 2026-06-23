@@ -1,4 +1,4 @@
-import { buildGeneratePrompt, buildCheckPrompt, buildEnNativePrompt, shuffleArray } from '../prompts/index.js';
+import { buildGeneratePrompt, buildInterrogativeRegeneratePrompt, buildCheckPrompt, buildEnNativePrompt, shuffleArray } from '../prompts/index.js';
 import { ERROR_TAG_CODES, getEffectiveQuestionTarget } from '../constants/essences.js';
 import { saveLastStep7TagSet } from '../constants/step7.js';
 import { buildPhraseGeneratePrompt, buildPhraseFeedbackEnrichPrompt } from '../prompts/phraseQuiz.js';
@@ -203,6 +203,20 @@ function parseJsonArray(text) {
 
 // ── Core fetch wrapper ───────────────────────────────────────────────────────
 
+const FETCH_NETWORK_RETRIES = 2;
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function normalizeFetchError(error) {
+  const message = error?.message ?? String(error);
+  if (/load failed|failed to fetch|networkerror|network error|aborted/i.test(message)) {
+    return new Error('ネットワークエラー: 接続に失敗しました。通信環境を確認して再試行してください。');
+  }
+  return error instanceof Error ? error : new Error(message);
+}
+
 function logApiDebug(entry) {
   console.log('[API Debug]', {
     at: new Date().toISOString(),
@@ -216,46 +230,62 @@ async function callClaude(apiKey, system, userMessage, { prefill, debug, maxToke
     messages.push({ role: 'assistant', content: prefill });
   }
 
-  const res = await fetch(ENDPOINT, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      // Required for direct browser-to-API calls.
-      // We intentionally expose this app to the API key holder only (personal use).
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: maxTokens,
-      system,
-      messages,
-    }),
+  const body = JSON.stringify({
+    model,
+    max_tokens: maxTokens,
+    system,
+    messages,
   });
 
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error?.message || `API error ${res.status}`);
+  let lastError;
+  for (let attempt = 0; attempt <= FETCH_NETWORK_RETRIES; attempt++) {
+    try {
+      const res = await fetch(ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
+        },
+        body,
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error?.message || `API error ${res.status}`);
+      }
+
+      const data = await res.json();
+      const text = data.content?.[0]?.text ?? '';
+      const fullText = prefill ? prefill + text : text;
+
+      if (debug) {
+        logApiDebug({
+          operation: debug.operation,
+          step: debug.step ?? null,
+          input_tokens: data.usage?.input_tokens ?? null,
+          output_tokens: data.usage?.output_tokens ?? null,
+          stop_reason: data.stop_reason ?? null,
+          max_tokens: maxTokens,
+          response_chars: fullText.length,
+          fetch_attempt: attempt + 1,
+        });
+      }
+
+      return fullText;
+    } catch (error) {
+      lastError = normalizeFetchError(error);
+      const isNetwork = lastError.message.includes('ネットワークエラー');
+      if (isNetwork && attempt < FETCH_NETWORK_RETRIES) {
+        await sleep(1500 * (attempt + 1));
+        continue;
+      }
+      throw lastError;
+    }
   }
 
-  const data = await res.json();
-  const text = data.content?.[0]?.text ?? '';
-  const fullText = prefill ? prefill + text : text;
-
-  if (debug) {
-    logApiDebug({
-      operation: debug.operation,
-      step: debug.step ?? null,
-      input_tokens: data.usage?.input_tokens ?? null,
-      output_tokens: data.usage?.output_tokens ?? null,
-      stop_reason: data.stop_reason ?? null,
-      max_tokens: maxTokens,
-      response_chars: fullText.length,
-    });
-  }
-
-  return fullText;
+  throw lastError ?? new Error('API呼び出しに失敗しました');
 }
 
 function normalizeExercise(ex) {
@@ -274,24 +304,6 @@ function normalizeExercise(ex) {
     _questionNote: typeof ex._questionNote === 'string' ? ex._questionNote : undefined,
   };
   return enrichInterrogativeMetadata(base);
-}
-
-const STEP_INTERROGATIVE_RETRY_HINTS = {
-  3: 'yesno と wh を混在させ、各問に mood=interrogative / questionType / thread を付与。否定文のみはカウントしない。',
-  4: 'wh で準動詞/前置詞句スロットを問う疑問文を中心に。',
-  5: 'Yes/No のみ（wh禁止）。関係詞節を内包した "Is the man who...?" 型。',
-  6: '間接疑問（whether/wh 名詞節X）も mood=interrogative としてカウントする。',
-  7: 'operationTag「疑問」かつ mood=interrogative の問を effectiveTarget 件確保する。',
-};
-
-function buildInterrogativeRetryUser(user, step, effectiveTarget) {
-  const stepHint = STEP_INTERROGATIVE_RETRY_HINTS[step] ?? '';
-  return `${user}
-
-【再生成指示 — 必須】
-前回の出力に mood=interrogative の問が effectiveTarget=${effectiveTarget} 件未満だった。
-必ず ${effectiveTarget} 件以上の疑問文を含めること（各問に mood=interrogative と questionType を付与）。${stepHint ? `\nStep ${step}: ${stepHint}` : ''}
-0件での返却は不可。`;
 }
 
 // ── Public API ───────────────────────────────────────────────────────────────
@@ -320,11 +332,12 @@ export async function generateExercises(apiKey, stepInfo, n = EXERCISES_PER_SET,
     : 0;
 
   if (effectiveTarget > 0 && countInterrogativeExercises(exercises.map(normalizeExercise)) < effectiveTarget) {
-      raw = await callClaude(apiKey, system, buildInterrogativeRetryUser(user, step, effectiveTarget), {
-        ...callOpts,
-        debug: { operation: 'generate-retry-interrogative', step: step ?? null },
-      });
-      exercises = parseJsonArray(raw);
+    const retry = buildInterrogativeRegeneratePrompt(stepInfo, step, n, effectiveTarget);
+    raw = await callClaude(apiKey, retry.system, retry.user, {
+      ...callOpts,
+      debug: { operation: 'generate-retry-interrogative', step: step ?? null },
+    });
+    exercises = parseJsonArray(raw);
   }
 
   if (!Array.isArray(exercises) || exercises.length === 0) {

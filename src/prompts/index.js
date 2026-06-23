@@ -494,6 +494,47 @@ nuance（必須）:
 export { shuffleArray };
 
 /**
+ * Compact regenerate prompt when the first response lacks enough interrogative items.
+ * Avoids duplicating the full user prompt (prevents oversized requests / mobile "Load failed").
+ */
+export function buildInterrogativeRegeneratePrompt(stepInfo, step, n, effectiveTarget) {
+  const policyBlock = formatQuestionPolicyForPrompt(step);
+  const stepQuestionExtra = buildStepQuestionExtra(step, effectiveTarget);
+  const coverage = getCoverageForStep(step);
+  const hint = STEP_QUESTION_GENERATION_HINTS[step] ?? '';
+
+  return {
+    system: `あなたは英語教育の専門家です。
+日本語→英語の翻訳練習問題を生成してください。
+必ず有効なJSON配列のみを返してください。マークダウンや説明文は一切含めないでください。
+
+疑問文必達: mood=interrogative の要素を ${effectiveTarget} 件以上含めること（0件は不可）。
+
+JSONの厳守ルール:
+- 文字列値はダブルクォートのみ
+- parts[].n や nuance 内の英文引用は『』
+- 末尾カンマ禁止`,
+
+    user: `Step ${step}「${stepInfo.sub}」（${stepInfo.focus}）の翻訳練習を${n}問、JSON配列のみで生成してください。
+
+前回は mood=interrogative が不足していました。今回は必ず ${effectiveTarget} 件以上の疑問文を含めてください。
+
+疑問文の設計方針: ${hint}
+${policyBlock}
+${stepQuestionExtra}
+
+Step MECE 網羅（平叙文と両立）:
+${coverage}
+
+生成順序:
+1. 先に ${effectiveTarget} 問分の疑問文（mood=interrogative / questionType / thread）を確定
+2. 残り ${n - effectiveTarget} 問を平叙文で設計
+
+各問に jp, en, parts, nuance, vocabHints を含める。疑問文には mood, questionType, thread を必須付与。`,
+  };
+}
+
+/**
  * Prompt for evaluating user translation attempts.
  * Claude returns a JSON array of Evaluation objects.
  *

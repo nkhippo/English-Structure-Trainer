@@ -66,7 +66,7 @@ export const STEP_QUESTION_POLICY = {
     allowedTypes: ['yesno'],
     preferred: 'yesno',
     whatToQuestion: '関係詞節(Y)を内包したまま主骨格を疑問化（例：その車を直した男はまだここにいますか）',
-    maxNatural: 4,
+    maxNatural: 3,
   },
   6: {
     allowedTypes: ['yesno', 'wh', 'indirect'],

@@ -82,6 +82,69 @@ function formatThemeAssignment(n) {
     .join('\n');
 }
 
+const STEP_CENTER_STRUCTURE = {
+  3: '動詞情報（時制・相・態・助動詞）',
+  4: '役割(X/Y/Z)と準動詞/前置詞句',
+  5: '関係詞節（後置修飾）',
+  6: '節のネスト（等位/従属・名詞節/関係詞節/副詞節）',
+  7: '発展操作（operationTag）',
+};
+
+const STEP_COVERAGE_LADDER = {
+  3: '時制×相のサンプリング網羅',
+  4: '役割≠形の minimal pair・同形異役割',
+  5: '関係代名詞・関係副詞・what名詞節・同格that',
+  6: 'Y+Zキーセンテンス型・副詞節(Z)・名詞節(X)・等位接続',
+  7: 'operationTag 2〜3種混在・倒置必須',
+};
+
+const STEP_QUESTION_OVERLAP_HINT = {
+  3: '各疑問文でも動詞情報（時制・相・態・助動詞）が学習ポイントになるよう設計',
+  4: '疑問文の骨格内に to do / -ing / 前置詞句を載せる',
+  5: '各疑問文の Y に関係詞節を載せる（= 関係詞カテゴリのカバーを兼ねる）',
+  6: '間接疑問の wh/if 名詞節(X) や Y+Z キーセンテンス型を疑問文に載せる',
+  7: 'operationTag「疑問」の問に発展操作の糸を載せる',
+};
+
+const STEP_SCOPE_EXCLUSIONS = {
+  3: '関係詞節・節ネスト・発展操作',
+  4: '関係詞節・節ネスト・発展操作',
+  5: '分詞・副詞節・準動詞（to do/-ing）が主目的の文',
+  6: '関係詞単体練習・発展操作が主目的の文',
+  7: 'Step 3〜6 の基礎構造が主目的の文',
+};
+
+function buildPriorityLadderSection(step, n, effectiveTarget) {
+  const center = STEP_CENTER_STRUCTURE[step] ?? '当STEPの中心構造';
+  const coverage = STEP_COVERAGE_LADDER[step] ?? getCoverageForStep(step);
+
+  return `
+優先順位（上が絶対。下位が上位と衝突したら上位を優先）:
+1. ちょうど${n}問を返す（多くても少なくてもならない）
+2. 各文が母語話者に自然な日本語であり、かつ当STEPの中心構造（Step${step}=${center}）が主たる練習点であること
+3. 当STEP範囲の疑問文を ${effectiveTarget} 問含める（疑問文は当STEPの構造を内包し、網羅を兼ねる）
+4. ${coverage} をセット全体で網羅（疑問・平叙のどちらが担ってもよい）
+5. テーマ多様性
+※ 4 が自然に満たせない場合のみ削り、3 が自然に満たせない場合のみ減らして _questionNote に記録する`;
+}
+
+function buildNaturalnessAbsoluteSection(step, n) {
+  const exclusion = STEP_SCOPE_EXCLUSIONS[step] ?? '他STEPの構造';
+  const center = STEP_CENTER_STRUCTURE[step] ?? '当STEPの中心構造';
+
+  return `
+自然さの絶対条件（網羅・テーマより上位。違反する文は破棄して書き直す）:
+- 母語話者が日常で実際に言う文か？を最終チェック。少しでも翻訳調・曖昧なら書き直す。
+- there-be 直訳調を避ける（×「多くの議論があるでしょう」→ 具体的な動詞で）。
+- 補語・主語に抽象名詞を置くときは曖昧さを残さない（×「問題は、部門間で誤解が生じることです」→ 何の誤解かを具体化）。
+- 助詞の不自然な使用を避ける（×「降雪があった日には数が減少した」→「雪が降った日は…」等の自然な接続）。
+- 時制を不必要に過去へ偏らせない（関係詞・句の練習に過去は必須ではない。現在・現在完了も混ぜる）。
+
+スコープの絶対条件:
+- 全${n}問が「${center}」を主たる練習点にすること。
+- 他STEPの構造（${exclusion}）が文の主目的になっている文を混ぜない。`;
+}
+
 function buildStep3GenerateExtra(n, questionTarget = 0) {
   const useQuestionPractice = getEffectiveQuestionTarget(3, questionTarget) > 0;
   const interrogativeBlock = useQuestionPractice
@@ -224,13 +287,6 @@ Step 7 疑問文の設計（必須 — operationTag「疑問」）:
 - 2〜3種 operationTag 混在・倒置必須1問など、Step 7 MECE 網羅と**両立**させる`;
 }
 
-const STEP_QUESTION_GENERATION_HINTS = {
-  3: 'yesno と wh を混在。動詞情報（時制・相・態・助動詞）を問う',
-  4: 'wh で準動詞/前置詞句スロットを問う（過半数 wh）',
-  5: 'Yes/No のみ。関係詞節(Y)を内包した主骨格を疑問化',
-  6: '間接疑問を中心に（過半数 indirect）',
-  7: 'operationTag「疑問」を effectiveTarget 件確保',
-};
 
 function buildStepQuestionExtra(step, effectiveTarget) {
   if (step === 3) return buildStep3QuestionExtra(effectiveTarget);
@@ -251,38 +307,27 @@ function buildQuestionPracticeSection(step, n, questionTarget) {
   const policyBlock = formatQuestionPolicyForPrompt(step);
   const stepQuestionExtra = buildStepQuestionExtra(step, effectiveTarget);
   const cappedNote = requested > effectiveTarget
-    ? `\n- スライダー ${requested}問は maxNatural により effectiveTarget=${effectiveTarget}問が必達上限`
+    ? `（スライダー ${requested}問 → maxNatural により目標 ${effectiveTarget}問）`
     : '';
+  const overlapHint = STEP_QUESTION_OVERLAP_HINT[step] ?? '当STEPの中心構造を内包する';
 
-  return `
+  return `${buildPriorityLadderSection(step, n, effectiveTarget)}
 
-疑問文練習（production — **最優先制約**。Step MECE 網羅と両立させる）:
+疑問文練習（production）:
 - 設計思想: 疑問文は STEP の構造的中身を差し替えるのではなく、**同じ構造的中身に疑問変形（法=mood）をかぶせる**（構造ターゲット軸 ⊥ 法軸は直交）
 - 糸1 = 助動詞を前に出す（Yes/No疑問）／糸2 = 空所を作り疑問詞を文頭へ（wh疑問）
-- **必達疑問文数（effectiveTarget）**: ${effectiveTarget}問 / ${n}問 — **mood=interrogative がこの件数以上含まれること（0件不可）**
-- スライダー目標（requested）: ${requested}問${cappedNote}
+- スライダー目標: ${requested}問${cappedNote}
 - STEP疑問ポリシー（タイプはポリシーで自動選択。allowed 外は生成禁止）:
 ${policyBlock}
-- **生成順序（必須）**:
-  1. 先に ${effectiveTarget} 問分の疑問文スロットを確定（mood=interrogative、questionType、thread）
-  2. 残り ${n - effectiveTarget} 問を平叙文（mood=declarative または省略）で設計
-  3. 返却直前に mood=interrogative の件数を数え、${effectiveTarget} 未満なら疑問文を追加してから返す
-- 各疑問文に必須: \`"mood": "interrogative"\`、\`"questionType": "yesno"|"wh"|"indirect"\`、可能なら \`"thread": "糸1"|"糸2"\`
-- **間接疑問（indirect）も疑問文にカウント**。英文が ? で終わらなくても mood=interrogative を付ける
-- 平叙文のみの問は mood=declarative または省略
-- **自然さガード**: effectiveTarget 未満にするのは、ポリシー上どうしても自然な疑問文が作れない場合**のみ**。その場合は先頭要素に \`_questionNote\` で理由と実際の件数を記録${stepQuestionExtra}`;
-}
 
-function buildQuestionGenerationSteps(step, n, questionTarget) {
-  const requested = questionTarget ?? 0;
-  if (requested <= 0 || step < 3 || step > 7) return '';
-
-  const effectiveTarget = getEffectiveQuestionTarget(step, requested);
-  if (effectiveTarget <= 0) return '';
-
-  const hint = STEP_QUESTION_GENERATION_HINTS[step] ?? '';
-  return `
-0. **疑問文 ${effectiveTarget} 問を先に割り当て**（各問 mood=interrogative / questionType / thread を決める${hint ? ` — ${hint}` : ''}）`;
+疑問文と網羅は別々に積まず、重ねる:
+- ${effectiveTarget} 問を「当STEPの中心構造を内包した疑問文」にする。${overlapHint}。
+- 網羅カテゴリは「${n}問全体で満たすセットの性質」であり、疑問・平叙のどちらが担ってもよい。
+- 「網羅のための平叙」と「疑問」を二重に用意しない（スロットの奪い合いを起こさない）。
+- 各疑問文に: \`"mood": "interrogative"\`、\`"questionType"\`、可能なら \`"thread"\`
+- 間接疑問（indirect）も疑問文にカウント（英文が ? で終わらなくても mood=interrogative）
+- 平叙の問は mood=declarative または省略
+- 自然さガード: 疑問文数は目標値である。**自然さ＞目標数**。ポリシー上どうしても自然な疑問文が目標数に届かない場合は無理に作らず可能な数に減らし、先頭要素の \`_questionNote\` に理由を記録${stepQuestionExtra}`;
 }
 
 function buildFollowUpReviewSection(reviewMarkdown, n, step, { coreTagSummary } = {}) {
@@ -329,8 +374,8 @@ export function buildGeneratePrompt(stepInfo, n, { step, reviewMarkdown, coreTag
   const questionPracticeSection = !reviewMarkdown && step >= 3 && step <= 7
     ? buildQuestionPracticeSection(step, n, questionTarget)
     : '';
-  const questionGenerationStep = !reviewMarkdown && step >= 3 && step <= 7
-    ? buildQuestionGenerationSteps(step, n, questionTarget)
+  const naturalnessSection = step >= 3 && step <= 7
+    ? buildNaturalnessAbsoluteSection(step, n)
     : '';
   const essence = getEssenceForStep(step);
   const followUpSection = reviewMarkdown
@@ -341,9 +386,7 @@ export function buildGeneratePrompt(stepInfo, n, { step, reviewMarkdown, coreTag
     system: `あなたは英語教育の専門家です。
 日本語→英語の翻訳練習問題を生成してください。
 必ず有効なJSONのみを返してください。マークダウンや説明文は一切含めないでください。
-${!reviewMarkdown && (questionTarget ?? 0) > 0 && step >= 3 && step <= 7
-    ? `\n疑問文必達: 返却JSON配列に mood=interrogative の要素を effectiveTarget=${getEffectiveQuestionTarget(step, questionTarget ?? 0)} 件以上含めること（0件は不可）。`
-    : ''}
+返却はちょうど${n}要素のJSON配列のみ（多くても少なくてもならない）。
 
 JSONの厳守ルール:
 - 文字列値はダブルクォートのみ使用（シングルクォート不可）
@@ -368,12 +411,13 @@ ${seedExamples || '  （参考例なし）'}
 - 今回のテーマ割り当て（この順で生成し、最後に並びをランダムに入れ替える）:
 ${themeAssignment}${questionPracticeSection}
 
-生成手順（必ずこの順番で）:${questionGenerationStep}
+生成手順（必ずこの順番で）:
 1. まず日本語文 jp を、母語話者が違和感なく言える自然な文として書く
 2. jp の意味を正確に英訳して en（文法・構造の模範）と parts を作る
 3. 英文の構文要件（後置修飾など）を満たすために、jp を英語語順に無理やり合わせない
+4. 返却直前に配列要素数を数え、${n}でなければ${n}に調整してから返す（参考例・シードは数に含めない）
 
-返却形式（JSONのみ）:
+返却形式（JSONのみ、ちょうど${n}要素の配列）:
 [
   {
     "jp": "自然な日本語文",
@@ -407,6 +451,7 @@ ${themeAssignment}${questionPracticeSection}
 
 日本語（jp）の品質要件:
 - 和文として自然で、英語の直訳調（カクル調）にしない
+${naturalnessSection}
 - 意味が通り、語彙と述語の組み合わせが論理的であること（例: ×「去年出版された著者」→ 著者は出版されない。本が出版される）
 - 英語の後置修飾に合わせてカンマで区切るなど、英語語順をそのまま写さない
 - 関係詞・後置修飾の Step では jp は連体修飾（名詞の前に修飾句）を使う
@@ -509,10 +554,9 @@ export { shuffleArray };
 export function buildInterrogativeRegeneratePrompt(stepInfo, step, n, effectiveTarget, questionTarget = effectiveTarget) {
   const policyBlock = formatQuestionPolicyForPrompt(step);
   const stepQuestionExtra = buildStepQuestionExtra(step, effectiveTarget);
-  const coverage = getCoverageForStep(step);
-  const hint = STEP_QUESTION_GENERATION_HINTS[step] ?? '';
+  const overlapHint = STEP_QUESTION_OVERLAP_HINT[step] ?? '当STEPの中心構造を内包する';
   const cappedNote = questionTarget > effectiveTarget
-    ? `\nスライダー ${questionTarget}問 → maxNatural により必達 ${effectiveTarget}問`
+    ? `\nスライダー ${questionTarget}問 → maxNatural により目標 ${effectiveTarget}問`
     : '';
   const step7Fields = step === 7
     ? `\nStep 7 追加フィールド（全問必須）: operationTag, cefr, thread。疑問文 ${effectiveTarget} 件は operationTag「疑問」+ mood=interrogative。`
@@ -522,30 +566,28 @@ export function buildInterrogativeRegeneratePrompt(stepInfo, step, n, effectiveT
     system: `あなたは英語教育の専門家です。
 日本語→英語の翻訳練習問題を生成してください。
 必ず有効なJSON配列のみを返してください。マークダウンや説明文は一切含めないでください。
-
-疑問文必達: mood=interrogative の要素を ${effectiveTarget} 件以上含めること（0件は不可）。
+返却はちょうど${n}要素の配列のみ（多くても少なくてもならない）。mood=interrogative を ${effectiveTarget} 件以上含めること。
 
 JSONの厳守ルール:
 - 文字列値はダブルクォートのみ
 - parts[].n や nuance 内の英文引用は『』
 - 末尾カンマ禁止`,
 
-    user: `Step ${step}「${stepInfo.sub}」（${stepInfo.focus}）の翻訳練習を${n}問、JSON配列のみで生成してください。
+    user: `${buildPriorityLadderSection(step, n, effectiveTarget)}
 
-前回は mood=interrogative が不足していました。今回は必ず ${effectiveTarget} 件以上の疑問文を含めてください。${cappedNote}
+Step ${step}「${stepInfo.sub}」（${stepInfo.focus}）の翻訳練習を${n}問、JSON配列のみで生成してください。
 
-疑問文の設計方針: ${hint}
+前回は mood=interrogative が不足していました。優先順位3を満たし、${effectiveTarget} 件以上の疑問文を含めてください。${cappedNote}
+
+疑問文と網羅は重ねる（別スロットに積まない）:
+- ${effectiveTarget} 問を当STEPの中心構造を内包した疑問文にする。${overlapHint}。
+- 網羅は ${n}問全体で満たし、疑問・平叙のどちらが担ってもよい。
+
 ${policyBlock}
 ${stepQuestionExtra}${step7Fields}
 
-Step MECE 網羅（平叙文と両立）:
-${coverage}
-
-生成順序:
-1. 先に ${effectiveTarget} 問分の疑問文（mood=interrogative / questionType / thread）を確定
-2. 残り ${n - effectiveTarget} 問を平叙文で設計
-
 各問に jp, en, parts, nuance, vocabHints を含める。疑問文には mood, questionType, thread を必須付与。
+返却直前に配列要素数が ${n} であることを確認する。
 vocabHints は [{ "jp": "辞書形", "en": "原形" }, ...] のオブジェクト配列のみ（文字列配列・空オブジェクト不可）。`,
   };
 }

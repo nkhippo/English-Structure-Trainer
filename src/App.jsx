@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { STEPS } from './constants/steps.js';
 import { getStoredApiKey, clearApiKey, generateExercises, generateEnNative, checkAnswers, EXERCISES_PER_SET, POINTS_PER_QUESTION } from './api/claude.js';
 import ApiKeyInput from './components/ApiKeyInput.jsx';
@@ -17,7 +17,7 @@ import { formatResultsMarkdown } from './utils/formatResultsMarkdown.js';
 import { getFollowUpCount, loadReviewHistory, saveReviewHistory } from './utils/reviewHistory.js';
 import { parseReviewMarkdown } from './utils/parseReviewMarkdown.js';
 import ReviewMarkdownPanel from './components/ReviewMarkdownPanel.jsx';
-import { aggregateCoreErrorTags, formatCoreTagSummary, DEFAULT_QUESTION_TARGETS, getEffectiveQuestionTarget, getMaxNaturalForStep } from './constants/essences.js';
+import { aggregateCoreErrorTags, formatCoreTagSummary, DEFAULT_QUESTION_TARGETS, getMaxNaturalForStep } from './constants/essences.js';
 import { countInterrogativeExercises } from './utils/interrogative.js';
 
 const C = { page: '#FAF9F6', card: '#FFFFFF', line: '#EAE8E1', t1: '#1C1B19', t2: '#6B6862', t3: '#9A968D', ink: '#1C1B19' };
@@ -76,9 +76,27 @@ export default function App() {
     ? getFollowUpCount(storedReview.questionCount)
     : 0;
   const showSessionFollowUp = sessionFollowUpCount > 0;
-  const questionTarget = questionTargetByStep[step] ?? DEFAULT_QUESTION_TARGETS[step] ?? 0;
-  const effectiveQuestionTarget = getEffectiveQuestionTarget(step, questionTarget);
   const maxNatural = getMaxNaturalForStep(step);
+  const questionTarget = Math.min(
+    questionTargetByStep[step] ?? DEFAULT_QUESTION_TARGETS[step] ?? 0,
+    maxNatural,
+  );
+
+  useEffect(() => {
+    setQuestionTargetByStep((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const s of Object.keys(DEFAULT_QUESTION_TARGETS).map(Number)) {
+        const max = getMaxNaturalForStep(s);
+        const cur = next[s] ?? DEFAULT_QUESTION_TARGETS[s] ?? 0;
+        if (cur > max) {
+          next[s] = max;
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, []);
   const interrogativeCount = countInterrogativeExercises(exercises);
   const questionNote = exercises.find((ex) => ex._questionNote)?._questionNote;
 
@@ -350,7 +368,7 @@ export default function App() {
                       id="question-target"
                       type="range"
                       min={0}
-                      max={EXERCISES_PER_SET}
+                      max={maxNatural}
                       value={questionTarget}
                       onChange={(e) => setQuestionTargetByStep((prev) => ({
                         ...prev,
@@ -360,17 +378,9 @@ export default function App() {
                       style={{ flex: 1, accentColor: C.ink }}
                     />
                     <span style={{ fontSize: 13, fontWeight: 700, color: C.t1, minWidth: 52, textAlign: 'right' }}>
-                      {questionTarget} / {EXERCISES_PER_SET}問
+                      {questionTarget} / {maxNatural}問
                     </span>
                   </div>
-                  {maxNatural < EXERCISES_PER_SET && (
-                    <p style={{ fontSize: 12, color: C.t2, margin: '0 0 10px', lineHeight: 1.5 }}>
-                      このSTEPでは疑問文は最大 {maxNatural} 問まで自然に設計できます
-                      {questionTarget > maxNatural && (
-                        <>（スライダー {questionTarget} → 実効 {effectiveQuestionTarget} 問）</>
-                      )}
-                    </p>
-                  )}
                   <button type="button" onClick={handleGenerate} disabled={isGenerating} style={{
                   width: '100%', padding: 14, borderRadius: 12, border: 'none',
                   background: C.ink, color: '#fff', fontSize: 15, fontWeight: 700,
@@ -392,10 +402,7 @@ export default function App() {
               )}
               {exercises.length > 0 && questionTarget > 0 && (
                 <p style={{ fontSize: 12, color: C.t2, margin: '8px 0 0', textAlign: 'center' }}>
-                  疑問文: {interrogativeCount}問
-                  {effectiveQuestionTarget !== questionTarget
-                    ? `（目標 ${questionTarget}問 → 必達 ${effectiveQuestionTarget}問）`
-                    : ` / 目標 ${questionTarget}問`}
+                  疑問文: {interrogativeCount}問 / 目標 {questionTarget}問
                 </p>
               )}
               {revealed && showSessionFollowUp && (

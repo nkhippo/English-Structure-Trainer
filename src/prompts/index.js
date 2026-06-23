@@ -475,6 +475,7 @@ ${themeAssignment}${questionPracticeSection}
     "mood": "interrogative（疑問文のみ必須）| declarative（平叙文）",
     "questionType": "yesno|wh|indirect（mood=interrogative の問のみ必須）",
     "thread": "糸1|糸2（疑問文で可能なら必須。Step7は全問必須の既存ルールに従う）",
+    "enReply": "疑問文 en に対する模範的な回答文（mood=interrogative の問のみ必須。平叙文では含めない）",
     "_questionNote": "目標疑問数に届かなかった場合のみ、配列先頭要素に理由を1文で（任意）"
   }
 ]
@@ -513,6 +514,12 @@ vocabHints（単語ヒント）のルール:
 - 動詞は原形（publish）、名詞は単数形（author）、形容詞は原形（large-scale）で en を書く
 - 活用形や時制は jp 側に書かず、jp は辞書形・基本形（出版する、大規模な）にする
 - 該当語がなければ vocabHints は空配列 [] にする
+
+疑問文の模範回答（enReply）— mood=interrogative の問のみ必須:
+- enReply は en（疑問文）に対する**自然で模範的な回答文**（平叙文または短い応答）
+- Yes/No 疑問には Yes/No で答えるか、理由・補足を1文添える
+- wh 疑問・間接疑問には、jp の文脈に沿った具体的な回答を1文で書く（en の構造練習とは独立した内容でよい）
+- enReply は採点対象外の参考表示。学習者が「この疑問にはこう答える」とイメージできる程度の自然さでよい
 
 模範解答（en）の品質要件 — 採点基準（100点）:
 - en は「意味が通る訳」ではなく、**Step の文法ポイント（${stepInfo.focus}）を最も明確に示す**模範訳とする
@@ -626,7 +633,7 @@ ${issueNote}${cappedNote}
 ${policyBlock}
 ${stepQuestionExtra}${step7Fields}
 
-各問に jp, en, parts, nuance, vocabHints を含める。疑問文には mood, questionType, thread を必須付与。
+各問に jp, en, parts, nuance, vocabHints を含める。疑問文には mood, questionType, thread, enReply を必須付与。
 返却直前に配列要素数が ${n}、mood=interrogative が ${effectiveTarget} であることを確認する。
 vocabHints は [{ "jp": "辞書形", "en": "原形" }, ...] のオブジェクト配列のみ（文字列配列・空オブジェクト不可）。
 
@@ -742,8 +749,38 @@ feedback 書式（可読性最優先）:
 
 /**
  * Lightweight on-demand enNative generation (UI expand).
+ * @param {string} jp
+ * @param {string} en
+ * @param {{ enReply?: string }} [opts]
  */
-export function buildEnNativePrompt(jp, en) {
+export function buildEnNativePrompt(jp, en, { enReply } = {}) {
+  const isInterrogative = Boolean(enReply?.trim());
+
+  if (isInterrogative) {
+    return {
+      system: `あなたは英語教育の専門家です。
+必ず有効なJSONのみを返してください。マークダウンや説明文は一切含めないでください。`,
+
+      user: `以下の日本語・模範疑問文・模範回答文を入力に、ネイティブらしい参考表現を1組生成してください。
+
+日本語: ${jp}
+模範疑問文（文法・構造）: ${en}
+模範回答文: ${enReply}
+
+返却形式（JSONのみ、1要素のオブジェクト）:
+{
+  "enNative": "ネイティブがより自然に言う疑問文（意味は jp / en と同じ。チャンク・コロケーション重視）",
+  "enNativeReply": "模範回答文をネイティブらしく言い換えた文（意味は模範回答文と同じ。別の事実・別の答えにしない）",
+  "nuanceNative": "enNative / enNativeReply が en / 模範回答文より自然に聞こえる理由（2〜3文）"
+}
+
+要件:
+- enNative は en と意味が同じ。en より口語的・自然なチャンク・語順を優先してよい
+- enNativeReply は模範回答文と意味が同じ。事実・Yes/No の結論を変えない
+- 採点基準ではない参考情報として書く`,
+    };
+  }
+
   return {
     system: `あなたは英語教育の専門家です。
 必ず有効なJSONのみを返してください。マークダウンや説明文は一切含めないでください。`,

@@ -260,10 +260,10 @@ export default function App() {
     setEnNativeLoadingKey(key);
     setError('');
     try {
-      const { enNative, nuanceNative } = await generateEnNative(apiKey, ex.jp, ex.en);
+      const { enNative, enNativeReply, nuanceNative } = await generateEnNative(apiKey, ex.jp, ex.en, { enReply: ex.enReply });
       setExercisesByStep((prev) => {
         const list = [...(prev[step] || [])];
-        list[index] = { ...list[index], enNative, nuanceNative };
+        list[index] = { ...list[index], enNative, enNativeReply, nuanceNative };
         return { ...prev, [step]: list };
       });
     } catch (e) {

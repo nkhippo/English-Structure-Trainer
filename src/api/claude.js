@@ -296,6 +296,8 @@ function normalizeExercise(ex) {
     vocabHints: normalizeVocabHints(ex.vocabHints),
     nuance: typeof ex.nuance === 'string' ? ex.nuance : '',
     enNative: typeof ex.enNative === 'string' ? ex.enNative.trim() : '',
+    enReply: typeof ex.enReply === 'string' ? ex.enReply.trim() : '',
+    enNativeReply: typeof ex.enNativeReply === 'string' ? ex.enNativeReply.trim() : '',
     nuanceNative: typeof ex.nuanceNative === 'string' ? ex.nuanceNative : '',
     operationTag: typeof ex.operationTag === 'string' ? ex.operationTag : undefined,
     cefr: typeof ex.cefr === 'string' ? ex.cefr : undefined,
@@ -418,9 +420,10 @@ function parseJsonObject(text) {
  * @param {string} apiKey
  * @param {string} jp
  * @param {string} en
+ * @param {{ enReply?: string }} [opts]
  */
-export async function generateEnNative(apiKey, jp, en) {
-  const { system, user } = buildEnNativePrompt(jp, en);
+export async function generateEnNative(apiKey, jp, en, { enReply } = {}) {
+  const { system, user } = buildEnNativePrompt(jp, en, { enReply });
   const raw = await callClaude(apiKey, system, user, {
     prefill: '{',
     maxTokens: 2048,
@@ -429,6 +432,7 @@ export async function generateEnNative(apiKey, jp, en) {
   const parsed = parseJsonObject(raw);
   return {
     enNative: typeof parsed.enNative === 'string' ? parsed.enNative.trim() : '',
+    enNativeReply: typeof parsed.enNativeReply === 'string' ? parsed.enNativeReply.trim() : '',
     nuanceNative: typeof parsed.nuanceNative === 'string' ? parsed.nuanceNative.trim() : '',
   };
 }

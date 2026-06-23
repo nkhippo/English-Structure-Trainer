@@ -1,12 +1,13 @@
 import { POINTS_PER_QUESTION } from '../api/claude.js';
 import { aggregateCoreErrorTags, formatCoreTagSummary } from '../constants/essences.js';
+import { inferInterrogativeMood } from './interrogative.js';
 
 /**
  * @param {{
  *   step: number,
  *   stepLabel: string,
  *   stepSub: string,
- *   exercises: { jp: string, en: string, enNative?: string, nuance?: string, nuanceNative?: string }[],
+ *   exercises: { jp: string, en: string, enReply?: string, enNative?: string, enNativeReply?: string, nuance?: string, nuanceNative?: string }[],
  *   attempts: Record<number, string>,
  *   evaluations: Record<number, { score: number, correct: boolean, feedback: string, errorTags?: string[] }>,
  * }} params
@@ -53,10 +54,27 @@ export function formatResultsMarkdown({
       lines.push('**あなたの解答:** （未入力）', '');
     }
 
-    lines.push(`**模範解答（文法・構造）:** ${ex.en}`, '');
+    const showQuestionAnswerPair = inferInterrogativeMood(ex) === 'interrogative' && Boolean(ex.enReply);
+
+    if (showQuestionAnswerPair) {
+      lines.push(`**模範解答（文法・構造）**`, '');
+      lines.push(`- 疑問文: ${ex.en}`);
+      lines.push(`- 回答例: ${ex.enReply}`, '');
+    } else {
+      lines.push(`**模範解答（文法・構造）:** ${ex.en}`, '');
+    }
 
     if (ex.enNative) {
-      lines.push(`**ネイティブらしい表現:** ${ex.enNative}`, '');
+      if (showQuestionAnswerPair) {
+        lines.push('**ネイティブらしい表現**', '');
+        lines.push(`- 疑問文: ${ex.enNative}`);
+        if (ex.enNativeReply) {
+          lines.push(`- 回答例: ${ex.enNativeReply}`);
+        }
+        lines.push('');
+      } else {
+        lines.push(`**ネイティブらしい表現:** ${ex.enNative}`, '');
+      }
       if (ex.nuanceNative) {
         lines.push(ex.nuanceNative, '');
       }

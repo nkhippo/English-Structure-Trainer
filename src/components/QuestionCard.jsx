@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { getRenderableParts, roleStyle } from '../utils/parts.js';
 import { getStep7ChapterAnchor, getStep7ChapterLabel } from '../constants/step7.js';
@@ -8,13 +8,34 @@ import { POINTS_PER_QUESTION } from '../api/claude.js';
 import { getScoreStyle } from '../constants/scoring.js';
 import QuestionHeader from './QuestionHeader.jsx';
 import { usePinnedSectionHeader } from '../hooks/usePinnedSectionHeader.js';
+import { inferInterrogativeMood } from '../utils/interrogative.js';
 
 const C = { card: '#FFFFFF', page: '#FAF9F6', line: '#EAE8E1', t1: '#1C1B19', t2: '#6B6862', t3: '#9A968D' };
+
+function EnglishLine({ label, text, boxStyle }) {
+  return (
+    <div style={{ marginBottom: 8 }}>
+      <p style={{ fontSize: 10, fontWeight: 700, color: C.t3, margin: '0 0 4px', letterSpacing: '.04em' }}>{label}</p>
+      <div style={{
+        background: C.page,
+        borderRadius: 10,
+        padding: '8px 12px',
+        fontSize: 15,
+        color: C.t2,
+        lineHeight: 1.5,
+        ...boxStyle,
+      }}
+      >
+        {text}
+      </div>
+    </div>
+  );
+}
 
 /**
  * @param {{
  *   index: number,
- *   exercise: { jp: string, en: string, parts: object[], nuance?: string, enNative?: string, nuanceNative?: string, vocabHints?: { jp: string, en: string }[] },
+ *   exercise: { jp: string, en: string, enReply?: string, parts: object[], nuance?: string, enNative?: string, enNativeReply?: string, nuanceNative?: string, vocabHints?: { jp: string, en: string }[] },
  *   attempt: string,
  *   evaluation: { score: number, correct: boolean, feedback: string, correction: string|null, errorTags?: string[] } | null,
  *   revealed: boolean,
@@ -32,16 +53,41 @@ export default function QuestionCard({
   const parts = getRenderableParts(exercise.parts);
   const [enNativeOpen, setEnNativeOpen] = useState(false);
   const showEnNative = enNativeOpen && Boolean(exercise.enNative);
+  const isInterrogative = inferInterrogativeMood(exercise) === 'interrogative';
+  const showQuestionAnswerPair = isInterrogative && Boolean(exercise.enReply);
   const { sectionRef, sentinelRef, pinned, layout } = usePinnedSectionHeader(revealed);
+  const headerWrapRef = useRef(null);
+  const lastHeaderHeightRef = useRef(0);
+  const [headerHeight, setHeaderHeight] = useState(0);
 
-  const inFlowHeaderStyle = revealed ? {
+  useEffect(() => {
+    const el = headerWrapRef.current;
+    if (!el || !revealed) {
+      setHeaderHeight(0);
+      lastHeaderHeightRef.current = 0;
+      return;
+    }
+    const measure = () => {
+      const h = el.offsetHeight;
+      if (h > 0) {
+        lastHeaderHeightRef.current = h;
+        setHeaderHeight(h);
+      }
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [jp, revealed]);
+
+  const pinnedHeaderHeight = headerHeight || lastHeaderHeightRef.current;
+
+  const stickyHeaderStyle = {
     position: 'sticky',
     top: 0,
     zIndex: 5,
     margin: '-20px -20px 0',
     padding: '20px 20px 12px',
-    visibility: pinned ? 'hidden' : 'visible',
-  } : {
     marginBottom: 12,
   };
 
@@ -68,8 +114,19 @@ export default function QuestionCard({
     <section ref={sectionRef} style={{ marginBottom: 12 }}>
       {revealed && <div ref={sentinelRef} aria-hidden="true" style={{ height: 0 }} />}
 
-      <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: 20, minWidth: 0, overflow: 'hidden' }}>
-        <QuestionHeader index={index} jp={jp} style={inFlowHeaderStyle} />
+      <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: 20, minWidth: 0 }}>
+        <div
+          ref={headerWrapRef}
+          style={revealed && pinned && pinnedHeaderHeight ? { height: pinnedHeaderHeight, flexShrink: 0 } : undefined}
+        >
+          {!(revealed && pinned && pinnedHeaderHeight) && (
+            <QuestionHeader
+              index={index}
+              jp={jp}
+              style={revealed ? stickyHeaderStyle : { marginBottom: 12 }}
+            />
+          )}
+        </div>
 
         <VocabHints key={jp} hints={exercise.vocabHints} revealed={revealed} />
 
@@ -104,13 +161,37 @@ export default function QuestionCard({
             {/* Model answer (100-point reference — grammar/structure) */}
             <div style={{ marginBottom: 12 }}>
               <p style={{ fontSize: 10.5, fontWeight: 700, color: C.t3, margin: '0 0 5px', letterSpacing: '.05em' }}>模範解答（文法・構造）</p>
-              <div style={{ background: C.page, borderRadius: 10, padding: '8px 12px', fontSize: 15, color: C.t2, lineHeight: 1.5 }}>{en}</div>
+              {showQuestionAnswerPair ? (
+                <>
+                  <EnglishLine label="疑問文" text={en} />
+                  <EnglishLine label="回答例" text={exercise.enReply} boxStyle={{ marginBottom: 0 }} />
+                </>
+              ) : (
+                <div style={{ background: C.page, borderRadius: 10, padding: '8px 12px', fontSize: 15, color: C.t2, lineHeight: 1.5 }}>{en}</div>
+              )}
             </div>
 
             {exercise.enNative && showEnNative && (
               <div style={{ marginBottom: 12 }}>
                 <p style={{ fontSize: 10.5, fontWeight: 700, color: C.t3, margin: '0 0 5px', letterSpacing: '.05em' }}>ネイティブらしい表現</p>
-                <div style={{ background: '#F5F8FC', borderRadius: 10, padding: '8px 12px', fontSize: 15, color: C.t2, lineHeight: 1.5, border: '1px solid #E2EAF2' }}>{exercise.enNative}</div>
+                {showQuestionAnswerPair ? (
+                  <>
+                    <EnglishLine
+                      label="疑問文"
+                      text={exercise.enNative}
+                      boxStyle={{ background: '#F5F8FC', border: '1px solid #E2EAF2' }}
+                    />
+                    {exercise.enNativeReply && (
+                      <EnglishLine
+                        label="回答例"
+                        text={exercise.enNativeReply}
+                        boxStyle={{ background: '#F5F8FC', border: '1px solid #E2EAF2', marginBottom: 0 }}
+                      />
+                    )}
+                  </>
+                ) : (
+                  <div style={{ background: '#F5F8FC', borderRadius: 10, padding: '8px 12px', fontSize: 15, color: C.t2, lineHeight: 1.5, border: '1px solid #E2EAF2' }}>{exercise.enNative}</div>
+                )}
                 {exercise.nuanceNative && (
                   <p style={{ fontSize: 12, color: C.t2, margin: '6px 0 0', lineHeight: 1.6 }}>{exercise.nuanceNative}</p>
                 )}

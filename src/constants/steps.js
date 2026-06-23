@@ -7,7 +7,9 @@
  * @property {string} en
  * @property {{ t: string, r: 'X'|'V'|'Y'|'Z', n: string, inner?: { t: string, r: 'X'|'V'|'Y'|'Z', n: string, inner?: object[] }[] }[]} parts
  * @property {string} [nuance]  // 模範解答が100点となる理由（語順・表現の選択根拠）
+ * @property {string} [enReply]  // 疑問文への模範回答（mood=interrogative のみ）
  * @property {string} [enNative]  // ネイティブらしい表現（採点対象外）
+ * @property {string} [enNativeReply]  // 模範回答のネイティブらしい言い換え
  * @property {string} [nuanceNative]  // enNative が自然な理由
  * @property {{ jp: string, en: string }[]} [vocabHints]  // 単語ヒント（任意）
  */

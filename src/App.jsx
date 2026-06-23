@@ -355,32 +355,37 @@ export default function App() {
             <div style={{ marginBottom: 16 }}>
               <StepInfoAccordion step={step} />
               {showCreateButton && (
-                <>
-                  <div style={{
-                    display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10,
-                    padding: '10px 14px', borderRadius: 10,
-                    background: C.card, border: `1px solid ${C.line}`,
-                  }}>
-                    <span id="question-target-label" style={{ fontSize: 13, fontWeight: 600, color: C.t1, flexShrink: 0 }}>
-                      疑問文の目標数
+                <div style={{
+                  marginBottom: 10,
+                  padding: '8px 10px',
+                  borderRadius: 10,
+                  background: C.card,
+                  border: `1px solid ${C.line}`,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 8,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                    <span id="question-target-label" style={{ fontSize: 12, fontWeight: 600, color: C.t2 }}>
+                      疑問文
                     </span>
                     <div
                       role="group"
                       aria-labelledby="question-target-label"
-                      style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 6 }}
                     >
                       <button
                         type="button"
-                        aria-label="疑問文の目標数を減らす"
+                        aria-label="疑問文の数を減らす"
                         onClick={() => setQuestionTargetByStep((prev) => ({
                           ...prev,
                           [step]: Math.max(0, questionTarget - 1),
                         }))}
                         disabled={isGenerating || questionTarget <= 0}
                         style={{
-                          width: 32, height: 32, borderRadius: 8,
+                          width: 28, height: 28, borderRadius: 7,
                           border: `1px solid ${C.line}`, background: C.page,
-                          color: C.t1, fontSize: 18, lineHeight: 1,
+                          color: C.t1, fontSize: 16, lineHeight: 1,
                           cursor: isGenerating || questionTarget <= 0 ? 'not-allowed' : 'pointer',
                           opacity: isGenerating || questionTarget <= 0 ? 0.4 : 1,
                           fontFamily: 'inherit', padding: 0,
@@ -391,22 +396,22 @@ export default function App() {
                       <span
                         id="question-target"
                         aria-live="polite"
-                        style={{ fontSize: 15, fontWeight: 700, color: C.t1, minWidth: 20, textAlign: 'center' }}
+                        style={{ fontSize: 14, fontWeight: 700, color: C.t1, minWidth: 36, textAlign: 'center' }}
                       >
-                        {questionTarget}
+                        {questionTarget}<span style={{ fontSize: 11, fontWeight: 600, color: C.t3 }}> / {maxNatural}</span>
                       </span>
                       <button
                         type="button"
-                        aria-label="疑問文の目標数を増やす"
+                        aria-label="疑問文の数を増やす"
                         onClick={() => setQuestionTargetByStep((prev) => ({
                           ...prev,
                           [step]: Math.min(maxNatural, questionTarget + 1),
                         }))}
                         disabled={isGenerating || questionTarget >= maxNatural}
                         style={{
-                          width: 32, height: 32, borderRadius: 8,
+                          width: 28, height: 28, borderRadius: 7,
                           border: `1px solid ${C.line}`, background: C.page,
-                          color: C.t1, fontSize: 18, lineHeight: 1,
+                          color: C.t1, fontSize: 16, lineHeight: 1,
                           cursor: isGenerating || questionTarget >= maxNatural ? 'not-allowed' : 'pointer',
                           opacity: isGenerating || questionTarget >= maxNatural ? 0.4 : 1,
                           fontFamily: 'inherit', padding: 0,
@@ -414,20 +419,17 @@ export default function App() {
                       >
                         +
                       </button>
-                      <span style={{ fontSize: 12, color: C.t2, minWidth: 48 }}>
-                        / {maxNatural}問
-                      </span>
                     </div>
                   </div>
                   <button type="button" onClick={handleGenerate} disabled={isGenerating} style={{
-                  width: '100%', padding: 14, borderRadius: 12, border: 'none',
-                  background: C.ink, color: '#fff', fontSize: 15, fontWeight: 700,
-                  cursor: isGenerating ? 'not-allowed' : 'pointer',
-                  opacity: isGenerating ? 0.7 : 1, fontFamily: 'inherit',
-                }}>
-                  {isGeneratingNew ? '問題を作成中…' : '問題を作成する'}
-                </button>
-                </>
+                    width: '100%', padding: '11px 12px', borderRadius: 10, border: 'none',
+                    background: C.ink, color: '#fff', fontSize: 14, fontWeight: 700,
+                    cursor: isGenerating ? 'not-allowed' : 'pointer',
+                    opacity: isGenerating ? 0.7 : 1, fontFamily: 'inherit',
+                  }}>
+                    {isGeneratingNew ? '問題を作成中…' : '問題を作成する'}
+                  </button>
+                </div>
               )}
               {questionNote && (
                 <p style={{
@@ -439,8 +441,8 @@ export default function App() {
                 </p>
               )}
               {exercises.length > 0 && questionTarget > 0 && (
-                <p style={{ fontSize: 12, color: C.t2, margin: '8px 0 0', textAlign: 'center' }}>
-                  疑問文: {interrogativeCount}問 / 目標 {questionTarget}問
+                <p style={{ fontSize: 12, color: C.t2, margin: '6px 0 0', textAlign: 'center' }}>
+                  疑問文 {interrogativeCount} / {questionTarget}問
                 </p>
               )}
               {revealed && showSessionFollowUp && (

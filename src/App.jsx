@@ -17,7 +17,7 @@ import { formatResultsMarkdown } from './utils/formatResultsMarkdown.js';
 import { getFollowUpCount, loadReviewHistory, saveReviewHistory } from './utils/reviewHistory.js';
 import { parseReviewMarkdown } from './utils/parseReviewMarkdown.js';
 import ReviewMarkdownPanel from './components/ReviewMarkdownPanel.jsx';
-import { aggregateCoreErrorTags, formatCoreTagSummary, DEFAULT_QUESTION_TARGETS, getEffectiveQuestionTarget } from './constants/essences.js';
+import { aggregateCoreErrorTags, formatCoreTagSummary, DEFAULT_QUESTION_TARGETS, getEffectiveQuestionTarget, getMaxNaturalForStep } from './constants/essences.js';
 import { countInterrogativeExercises } from './utils/interrogative.js';
 
 const C = { page: '#FAF9F6', card: '#FFFFFF', line: '#EAE8E1', t1: '#1C1B19', t2: '#6B6862', t3: '#9A968D', ink: '#1C1B19' };
@@ -78,6 +78,7 @@ export default function App() {
   const showSessionFollowUp = sessionFollowUpCount > 0;
   const questionTarget = questionTargetByStep[step] ?? DEFAULT_QUESTION_TARGETS[step] ?? 0;
   const effectiveQuestionTarget = getEffectiveQuestionTarget(step, questionTarget);
+  const maxNatural = getMaxNaturalForStep(step);
   const interrogativeCount = countInterrogativeExercises(exercises);
   const questionNote = exercises.find((ex) => ex._questionNote)?._questionNote;
 
@@ -362,6 +363,14 @@ export default function App() {
                       {questionTarget} / {EXERCISES_PER_SET}問
                     </span>
                   </div>
+                  {maxNatural < EXERCISES_PER_SET && (
+                    <p style={{ fontSize: 12, color: C.t2, margin: '0 0 10px', lineHeight: 1.5 }}>
+                      このSTEPでは疑問文は最大 {maxNatural} 問まで自然に設計できます
+                      {questionTarget > maxNatural && (
+                        <>（スライダー {questionTarget} → 実効 {effectiveQuestionTarget} 問）</>
+                      )}
+                    </p>
+                  )}
                   <button type="button" onClick={handleGenerate} disabled={isGenerating} style={{
                   width: '100%', padding: 14, borderRadius: 12, border: 'none',
                   background: C.ink, color: '#fff', fontSize: 15, fontWeight: 700,

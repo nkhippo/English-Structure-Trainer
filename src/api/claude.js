@@ -332,13 +332,19 @@ export async function generateExercises(apiKey, stepInfo, n = EXERCISES_PER_SET,
     ? getEffectiveQuestionTarget(step, questionTarget ?? 0)
     : 0;
 
-  if (effectiveTarget > 0 && countInterrogativeExercises(exercises.map(normalizeExercise)) < effectiveTarget) {
-    const retry = buildInterrogativeRegeneratePrompt(stepInfo, step, n, effectiveTarget, questionTarget ?? effectiveTarget);
-    raw = await callClaude(apiKey, retry.system, retry.user, {
-      ...callOpts,
-      debug: { operation: 'generate-retry-interrogative', step: step ?? null },
-    });
-    exercises = parseJsonArray(raw);
+  if (effectiveTarget > 0) {
+    const interrogativeCount = countInterrogativeExercises(exercises.map(normalizeExercise));
+    if (interrogativeCount !== effectiveTarget) {
+      const issue = interrogativeCount > effectiveTarget ? 'too_many' : 'too_few';
+      const retry = buildInterrogativeRegeneratePrompt(
+        stepInfo, step, n, effectiveTarget, questionTarget ?? effectiveTarget, { issue },
+      );
+      raw = await callClaude(apiKey, retry.system, retry.user, {
+        ...callOpts,
+        debug: { operation: `generate-retry-interrogative-${issue}`, step: step ?? null },
+      });
+      exercises = parseJsonArray(raw);
+    }
   }
 
   if (!Array.isArray(exercises) || exercises.length === 0) {

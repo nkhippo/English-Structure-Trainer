@@ -101,6 +101,11 @@ export function getEffectiveQuestionTarget(step, questionTarget) {
   return Math.min(questionTarget, maxNatural);
 }
 
+export function getMaxNaturalForStep(step) {
+  const policy = STEP_QUESTION_POLICY[step];
+  return typeof policy?.maxNatural === 'number' ? policy.maxNatural : 7;
+}
+
 export function getQuestionPolicyForStep(step) {
   return STEP_QUESTION_POLICY[step] ?? null;
 }

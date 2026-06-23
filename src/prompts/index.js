@@ -628,7 +628,12 @@ ${stepQuestionExtra}${step7Fields}
 
 各問に jp, en, parts, nuance, vocabHints を含める。疑問文には mood, questionType, thread を必須付与。
 返却直前に配列要素数が ${n}、mood=interrogative が ${effectiveTarget} であることを確認する。
-vocabHints は [{ "jp": "辞書形", "en": "原形" }, ...] のオブジェクト配列のみ（文字列配列・空オブジェクト不可）。`,
+vocabHints は [{ "jp": "辞書形", "en": "原形" }, ...] のオブジェクト配列のみ（文字列配列・空オブジェクト不可）。
+
+parts（必須・空配列不可）:
+- 各要素に "t"（英文チャンク）と "r"（"X"|"V"|"Y"|"Z"）を必ず付与。句・節を含むチャンクは "inner" で再帰分解
+- parts[].t をスペースで繋いだ文字列が en と完全一致すること
+- 例: "parts": [{ "t": "Is", "r": "V" }, { "t": "what he said", "r": "X", "n": "名詞節（主語）" }]`,
   };
 }
 

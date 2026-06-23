@@ -55,15 +55,52 @@ export function roleStyle(r) {
   return ROLES[r?.toUpperCase()] ?? ROLES.X;
 }
 
+/** @param {Record<string, unknown>} part */
+function resolvePartText(part) {
+  for (const key of ['t', 'text', 'chunk', 'token']) {
+    if (typeof part[key] === 'string') return part[key];
+  }
+  return '';
+}
+
+/** @param {Record<string, unknown>} part */
+function resolvePartRole(part) {
+  for (const key of ['r', 'role', 'type']) {
+    if (part[key] != null && part[key] !== '') return String(part[key]);
+  }
+  return 'X';
+}
+
+/** Parts that have displayable chunk text after normalization. */
+export function getRenderableParts(parts) {
+  return (parts ?? []).filter((p) => p && collapseSpaces(p.t || ''));
+}
+
+/** Top-level role sequence for the skeleton frame (e.g. "X · V · Y"). */
+export function formatSkeletonFrame(parts) {
+  return getRenderableParts(parts)
+    .map((p) => {
+      const role = String(p.r ?? 'X').toUpperCase();
+      return VALID_ROLES.has(role) ? role : 'X';
+    })
+    .join(' · ');
+}
+
 /** @param {unknown} part @returns {Part|null} */
 export function normalizePart(part) {
-  if (!part || typeof part.t !== 'string') return null;
-  const r = String(part.r ?? 'X').toUpperCase();
+  if (!part || typeof part !== 'object') return null;
+
   const inner = Array.isArray(part.inner)
     ? part.inner.map(normalizePart).filter(Boolean)
     : undefined;
+
+  let t = collapseSpaces(resolvePartText(part));
+  if (!t && inner?.length) t = joinInnerText(inner);
+  if (!t) return null;
+
+  const r = resolvePartRole(part).toUpperCase();
   const normalized = {
-    t: part.t,
+    t,
     r: VALID_ROLES.has(r) ? r : 'X',
     n: typeof part.n === 'string' ? part.n : '',
     ...(inner?.length ? { inner } : {}),

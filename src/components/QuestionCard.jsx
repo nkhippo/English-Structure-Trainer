@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { roleStyle } from '../utils/parts.js';
+import { getRenderableParts, roleStyle } from '../utils/parts.js';
 import { getStep7ChapterAnchor, getStep7ChapterLabel } from '../constants/step7.js';
 import VocabHints from './VocabHints.jsx';
 import { ColorChunk } from './PartBreakdown.jsx';
@@ -29,7 +29,7 @@ export default function QuestionCard({
   onLoadEnNative, enNativeLoading = false,
 }) {
   const { jp, en } = exercise;
-  const parts = (exercise.parts ?? []).filter((p) => p?.t);
+  const parts = getRenderableParts(exercise.parts);
   const [enNativeOpen, setEnNativeOpen] = useState(false);
   const showEnNative = enNativeOpen && Boolean(exercise.enNative);
   const { sectionRef, sentinelRef, pinned, layout } = usePinnedSectionHeader(revealed);
@@ -171,13 +171,17 @@ export default function QuestionCard({
 
             {/* Frame */}
             <p style={{ fontSize: 10.5, fontWeight: 700, color: C.t3, margin: '0 0 5px', letterSpacing: '.05em' }}>骨格フレーム</p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 12 }}>
-              {parts.map((p, j) => (
-                <span key={j} style={{ fontSize: 13, fontWeight: 700, color: roleStyle(p.r).text }}>
-                  {p.r}{j < parts.length - 1 ? ' ·' : ''}
-                </span>
-              ))}
-            </div>
+            {parts.length > 0 ? (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 12 }}>
+                {parts.map((p, j) => (
+                  <span key={j} style={{ fontSize: 13, fontWeight: 700, color: roleStyle(p.r).text }}>
+                    {p.r}{j < parts.length - 1 ? ' ·' : ''}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p style={{ fontSize: 12, color: C.t3, margin: '0 0 12px', fontStyle: 'italic' }}>構造データがありません</p>
+            )}
 
             {/* Color-coded answer */}
             <p style={{ fontSize: 10.5, fontWeight: 700, color: C.t3, margin: '0 0 8px', letterSpacing: '.05em' }}>模範解答（語順のまま色分け）</p>

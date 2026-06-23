@@ -307,6 +307,23 @@ function normalizeExercise(ex) {
   return enrichInterrogativeMetadata(base);
 }
 
+/** Keep parts from the first response when a compact retry omits them for the same jp. */
+function mergePartsFromPrevious(nextExercises, previousExercises) {
+  if (!previousExercises?.length) return nextExercises;
+  const partsByJp = new Map(
+    previousExercises
+      .filter((ex) => ex.jp && Array.isArray(ex.parts) && ex.parts.length > 0)
+      .map((ex) => [ex.jp, ex.parts]),
+  );
+  if (partsByJp.size === 0) return nextExercises;
+
+  return nextExercises.map((ex) => {
+    if (Array.isArray(ex.parts) && ex.parts.length > 0) return ex;
+    const prevParts = partsByJp.get(ex.jp);
+    return prevParts ? { ...ex, parts: prevParts } : ex;
+  });
+}
+
 // ── Public API ───────────────────────────────────────────────────────────────
 
 /**
@@ -327,6 +344,7 @@ export async function generateExercises(apiKey, stepInfo, n = EXERCISES_PER_SET,
 
   let raw = await callClaude(apiKey, system, user, callOpts);
   let exercises = parseJsonArray(raw);
+  const firstExercises = exercises;
 
   const effectiveTarget = !reviewMarkdown && step >= 3 && step <= 7
     ? getEffectiveQuestionTarget(step, questionTarget ?? 0)
@@ -343,7 +361,7 @@ export async function generateExercises(apiKey, stepInfo, n = EXERCISES_PER_SET,
         ...callOpts,
         debug: { operation: `generate-retry-interrogative-${issue}`, step: step ?? null },
       });
-      exercises = parseJsonArray(raw);
+      exercises = mergePartsFromPrevious(parseJsonArray(raw), firstExercises);
     }
   }
 

@@ -2,8 +2,8 @@
 
 - 仕様: work-request-question-practice 改修2+3（優先順位ラダー + overlap + 疑問数ちょうど effectiveTarget）
 - 生成元: `buildGeneratePrompt()` in `src/prompts/index.js`
-- questionTarget（スライダー）: 1
-- effectiveTarget（優先順位3）: 1
+- questionTarget（スライダー）: 2
+- effectiveTarget（優先順位3）: 2
 - maxNatural: 2 — （上限なし）
 
 ## System
@@ -34,28 +34,28 @@ JSONの厳守ルール:
 
 参考例（日本語の自然さ・文体の基準。テーマや内容は参考例に引きずられず、下記のテーマ割り当てに従うこと）:
 [例1]
-  日本語: 彼女は私より背が高い。
-  英語: She is taller than I am.
+  日本語: 会ったのは昨日の彼女だった。
+  英語: It was her that I met yesterday.
 
 [例2]
-  日本語: 彼は疲れていると言った。
-  英語: He said that he was tired.
+  日本語: 彼女は私より背が高い。
+  英語: She is taller than I am.
 
 テーマの多様性（必須）:
 - 各問に異なるテーマを1つずつ割り当て、jp の内容がそのテーマになるようにする
 - 同じセット内でテーマ・場面・主語・文型の重複を避ける（例: 「毎日走ることで〜」のような同型文を複数問に使わない）
 - 今回のテーマ割り当て（この順で生成し、最後に並びをランダムに入れ替える）:
-  問1: テクノロジー
-  問2: 買い物・お金
-  問3: 動物・ペット
-  問4: 環境・社会
-  問5: 自然・天気
-  問6: 季節・イベント
-  問7: 住まい・家具
+  問1: 家族・友人
+  問2: 文化・芸術
+  問3: 環境・社会
+  問4: 地域・都市
+  問5: 交通・移動
+  問6: 買い物・お金
+  問7: 仕事・職場
 優先順位（上が絶対。下位が上位と衝突したら上位を優先）:
 1. ちょうど7問を返す（多くても少なくてもならない）
 2. 各文が母語話者に自然な日本語であり、かつ当STEPの中心構造（Step7=発展操作（operationTag））が主たる練習点であること
-3. 当STEP範囲の疑問文を**ちょうど 1 問**にする（**超過も不足もしない**。不足時のみ減らして _questionNote）。残り 6 問は平叙文（mood=declarative）
+3. 当STEP範囲の疑問文を**ちょうど 2 問**にする（**超過も不足もしない**。不足時のみ減らして _questionNote）。残り 5 問は平叙文（mood=declarative）
 4. operationTag 2〜3種混在・倒置必須 をセット全体で網羅（疑問・平叙のどちらが担ってもよい）
 5. テーマ多様性
 ※ 4 が自然に満たせない場合のみ削り、3 が自然に満たせない場合のみ _questionNote に記録する（疑問文の**上振れは不可**）
@@ -63,7 +63,7 @@ JSONの厳守ルール:
 疑問文練習（production）:
 - 設計思想: 疑問文は STEP の構造的中身を差し替えるのではなく、**同じ構造的中身に疑問変形（法=mood）をかぶせる**（構造ターゲット軸 ⊥ 法軸は直交）
 - 糸1 = 助動詞を前に出す（Yes/No疑問）／糸2 = 空所を作り疑問詞を文頭へ（wh疑問）
-- スライダー目標: 1問
+- スライダー目標: 2問
 - STEP疑問ポリシー（タイプはポリシーで自動選択。allowed 外は生成禁止）:
 - 許可タイプ（allowedTypes）: operationTag「疑問」に従う（Step 7） — **allowed 外のタイプは生成しない**
 - 優先（preferred）: （Step 7：operationTag と糸の相性で自動選択）
@@ -71,16 +71,16 @@ JSONの厳守ルール:
 - 自然な上限（maxNatural）: 2問
 
 疑問文と網羅は別々に積まず、重ねる:
-- **ちょうど 1 問**を「当STEPの中心構造を内包した疑問文」にする。operationTag「疑問」の問に発展操作の糸を載せる。
+- **ちょうど 2 問**を「当STEPの中心構造を内包した疑問文」にする。operationTag「疑問」の問に発展操作の糸を載せる。
 - 網羅カテゴリは「7問全体で満たすセットの性質」であり、疑問・平叙のどちらが担ってもよい。
 - 「網羅のための平叙」と「疑問」を二重に用意しない（スロットの奪い合いを起こさない）。
-- **effectiveTarget（1問）を超える疑問文を作らない。** 超過しそうなら超過分は平叙文に戻す。残り 6 問は必ず平叙文（mood=declarative）
+- **effectiveTarget（2問）を超える疑問文を作らない。** 超過しそうなら超過分は平叙文に戻す。残り 5 問は必ず平叙文（mood=declarative）
 - 各疑問文に: `"mood": "interrogative"`、`"questionType"`、可能なら `"thread"`
 - 間接疑問（indirect）も疑問文にカウント（英文が ? で終わらなくても mood=interrogative）
 - 平叙の問は mood=declarative または省略
 - 自然さガード: **自然さ＞目標数**だが **effectiveTarget を超えて疑問文を作らない**（上振れは構造の多様性を損なう）。自然に作れず effectiveTarget を**下回る**場合のみ _questionNote に理由を記録
 Step 7 疑問文の設計（必須 — operationTag「疑問」）:
-- effectiveTarget=1 件は **operationTag「疑問」かつ mood=interrogative** の問として確保する
+- effectiveTarget=2 件は **operationTag「疑問」かつ mood=interrogative** の問として確保する
 - 他 operationTag（比較・仮定法・倒置/強調・否定・話法・省略）の問は mood=declarative（平叙）として扱い、疑問文カウントに含めない
 - 倒置/強調（糸1）の問では wh疑問（糸2）を避ける / 強調cleft（糸2）の問では Yes/No（糸1）を避ける
 - 例（yesno）: jp「彼女は幸せですか」→ en "Is she happy?" / operationTag=疑問 / mood=interrogative / questionType=yesno / thread=糸1
@@ -92,7 +92,7 @@ Step 7 疑問文の設計（必須 — operationTag「疑問」）:
 2. jp の意味を正確に英訳して en（文法・構造の模範）と parts を作る
 3. 英文の構文要件（後置修飾など）を満たすために、jp を英語語順に無理やり合わせない
 4. 返却直前に配列要素数を数え、7でなければ7に調整してから返す（参考例・シードは数に含めない）
-5. 返却直前に mood=interrogative の件数を数え、**effectiveTarget=1 と一致**するか確認する（多すぎる場合は超過分を平叙に戻してから返す。不足時のみ _questionNote）
+5. 返却直前に mood=interrogative の件数を数え、**effectiveTarget=2 と一致**するか確認する（多すぎる場合は超過分を平叙に戻してから返す。不足時のみ _questionNote）
 
 返却形式（JSONのみ、ちょうど7要素の配列）:
 [
@@ -116,6 +116,7 @@ Step 7 疑問文の設計（必須 — operationTag「疑問」）:
     "mood": "interrogative（疑問文のみ必須）| declarative（平叙文）",
     "questionType": "yesno|wh|indirect（mood=interrogative の問のみ必須）",
     "thread": "糸1|糸2（疑問文で可能なら必須。Step7は全問必須の既存ルールに従う）",
+    "enReply": "疑問文 en に対する模範的な回答文（mood=interrogative の問のみ必須。平叙文では含めない）",
     "_questionNote": "目標疑問数に届かなかった場合のみ、配列先頭要素に理由を1文で（任意）"
   }
 ]
@@ -141,7 +142,7 @@ Step 7 疑問文の設計（必須 — operationTag「疑問」）:
 スコープの絶対条件:
 - 全7問が「発展操作（operationTag）」を主たる練習点にすること。
 - 他STEPの構造（Step 3〜6 の基礎構造が主目的の文）が文の主目的になっている文を混ぜない。
-- **法(mood)軸は構造軸を侵食しないこと**。同型の疑問文（例: Step5『[名詞＋関係詞節]は〜ですか』）を effectiveTarget（1問）を超えて並べない。構造（関係詞サブタイプ等）のばらつきを優先する
+- **法(mood)軸は構造軸を侵食しないこと**。同型の疑問文（例: Step5『[名詞＋関係詞節]は〜ですか』）を effectiveTarget（2問）を超えて並べない。構造（関係詞サブタイプ等）のばらつきを優先する
 - 意味が通り、語彙と述語の組み合わせが論理的であること（例: ×「去年出版された著者」→ 著者は出版されない。本が出版される）
 - 英語の後置修飾に合わせてカンマで区切るなど、英語語順をそのまま写さない
 - 関係詞・後置修飾の Step では jp は連体修飾（名詞の前に修飾句）を使う
@@ -167,6 +168,12 @@ vocabHints（単語ヒント）のルール:
 - 動詞は原形（publish）、名詞は単数形（author）、形容詞は原形（large-scale）で en を書く
 - 活用形や時制は jp 側に書かず、jp は辞書形・基本形（出版する、大規模な）にする
 - 該当語がなければ vocabHints は空配列 [] にする
+
+疑問文の模範回答（enReply）— mood=interrogative の問のみ必須:
+- enReply は en（疑問文）に対する**自然で模範的な回答文**（平叙文または短い応答）
+- Yes/No 疑問には Yes/No で答えるか、理由・補足を1文添える
+- wh 疑問・間接疑問には、jp の文脈に沿った具体的な回答を1文で書く（en の構造練習とは独立した内容でよい）
+- enReply は採点対象外の参考表示。学習者が「この疑問にはこう答える」とイメージできる程度の自然さでよい
 
 模範解答（en）の品質要件 — 採点基準（100点）:
 - en は「意味が通る訳」ではなく、**Step の文法ポイント（骨格への7操作（比較・仮定法・疑問の体系・倒置/強調・否定・話法・省略））を最も明確に示す**模範訳とする

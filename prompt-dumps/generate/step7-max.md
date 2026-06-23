@@ -2,9 +2,9 @@
 
 - 仕様: work-request-question-practice 改修2+3（優先順位ラダー + overlap + 疑問数ちょうど effectiveTarget）
 - 生成元: `buildGeneratePrompt()` in `src/prompts/index.js`
-- questionTarget（スライダー）: 7
+- questionTarget（スライダー）: 2
 - effectiveTarget（優先順位3）: 2
-- maxNatural: 2 — スライダー 7 → effectiveTarget 2
+- maxNatural: 2 — （STEP上限 2問 = effectiveTarget 2）
 
 ## System
 
@@ -34,24 +34,24 @@ JSONの厳守ルール:
 
 参考例（日本語の自然さ・文体の基準。テーマや内容は参考例に引きずられず、下記のテーマ割り当てに従うこと）:
 [例1]
-  日本語: 彼女は私より背が高い。
-  英語: She is taller than I am.
+  日本語: 会ったのは昨日の彼女だった。
+  英語: It was her that I met yesterday.
 
 [例2]
-  日本語: 彼は疲れていると言った。
-  英語: He said that he was tired.
+  日本語: もし私があなたなら、行くでしょう。
+  英語: If I were you, I would go.
 
 テーマの多様性（必須）:
 - 各問に異なるテーマを1つずつ割り当て、jp の内容がそのテーマになるようにする
 - 同じセット内でテーマ・場面・主語・文型の重複を避ける（例: 「毎日走ることで〜」のような同型文を複数問に使わない）
 - 今回のテーマ割り当て（この順で生成し、最後に並びをランダムに入れ替える）:
-  問1: 学校・勉強
-  問2: 季節・イベント
-  問3: 環境・社会
-  問4: 動物・ペット
-  問5: 文化・芸術
-  問6: 買い物・お金
-  問7: 地域・都市
+  問1: 文化・芸術
+  問2: 交通・移動
+  問3: 学校・勉強
+  問4: 地域・都市
+  問5: 住まい・家具
+  問6: 環境・社会
+  問7: 料理・食べ物
 優先順位（上が絶対。下位が上位と衝突したら上位を優先）:
 1. ちょうど7問を返す（多くても少なくてもならない）
 2. 各文が母語話者に自然な日本語であり、かつ当STEPの中心構造（Step7=発展操作（operationTag））が主たる練習点であること
@@ -63,7 +63,7 @@ JSONの厳守ルール:
 疑問文練習（production）:
 - 設計思想: 疑問文は STEP の構造的中身を差し替えるのではなく、**同じ構造的中身に疑問変形（法=mood）をかぶせる**（構造ターゲット軸 ⊥ 法軸は直交）
 - 糸1 = 助動詞を前に出す（Yes/No疑問）／糸2 = 空所を作り疑問詞を文頭へ（wh疑問）
-- スライダー目標: 7問（スライダー 7問 → maxNatural により目標 2問）
+- スライダー目標: 2問
 - STEP疑問ポリシー（タイプはポリシーで自動選択。allowed 外は生成禁止）:
 - 許可タイプ（allowedTypes）: operationTag「疑問」に従う（Step 7） — **allowed 外のタイプは生成しない**
 - 優先（preferred）: （Step 7：operationTag と糸の相性で自動選択）
@@ -116,6 +116,7 @@ Step 7 疑問文の設計（必須 — operationTag「疑問」）:
     "mood": "interrogative（疑問文のみ必須）| declarative（平叙文）",
     "questionType": "yesno|wh|indirect（mood=interrogative の問のみ必須）",
     "thread": "糸1|糸2（疑問文で可能なら必須。Step7は全問必須の既存ルールに従う）",
+    "enReply": "疑問文 en に対する模範的な回答文（mood=interrogative の問のみ必須。平叙文では含めない）",
     "_questionNote": "目標疑問数に届かなかった場合のみ、配列先頭要素に理由を1文で（任意）"
   }
 ]
@@ -167,6 +168,12 @@ vocabHints（単語ヒント）のルール:
 - 動詞は原形（publish）、名詞は単数形（author）、形容詞は原形（large-scale）で en を書く
 - 活用形や時制は jp 側に書かず、jp は辞書形・基本形（出版する、大規模な）にする
 - 該当語がなければ vocabHints は空配列 [] にする
+
+疑問文の模範回答（enReply）— mood=interrogative の問のみ必須:
+- enReply は en（疑問文）に対する**自然で模範的な回答文**（平叙文または短い応答）
+- Yes/No 疑問には Yes/No で答えるか、理由・補足を1文添える
+- wh 疑問・間接疑問には、jp の文脈に沿った具体的な回答を1文で書く（en の構造練習とは独立した内容でよい）
+- enReply は採点対象外の参考表示。学習者が「この疑問にはこう答える」とイメージできる程度の自然さでよい
 
 模範解答（en）の品質要件 — 採点基準（100点）:
 - en は「意味が通る訳」ではなく、**Step の文法ポイント（骨格への7操作（比較・仮定法・疑問の体系・倒置/強調・否定・話法・省略））を最も明確に示す**模範訳とする

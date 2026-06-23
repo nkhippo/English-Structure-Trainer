@@ -15,6 +15,7 @@ import {
   DEFAULT_QUESTION_TARGETS,
   STEP_QUESTION_POLICY,
   getEffectiveQuestionTarget,
+  getMaxNaturalForStep,
 } from '../src/constants/essences.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -69,13 +70,15 @@ for (let step = 3; step <= 7; step++) {
 
   for (const { label, questionTarget } of [
     { label: 'default', questionTarget: DEFAULT_QUESTION_TARGETS[step] },
-    { label: 'max', questionTarget: N },
+    { label: 'max', questionTarget: getMaxNaturalForStep(step) },
   ]) {
     const effectiveTarget = getEffectiveQuestionTarget(step, questionTarget);
     const { system, user } = buildGeneratePrompt(stepInfo, N, { step, questionTarget });
     const capped = questionTarget > effectiveTarget
       ? `スライダー ${questionTarget} → effectiveTarget ${effectiveTarget}`
-      : '（上限なし）';
+      : label === 'max'
+        ? `（STEP上限 ${maxNatural}問 = effectiveTarget ${effectiveTarget}）`
+        : '（上限なし）';
 
     const content = `# Step ${step} — ${label}（問題生成）
 

@@ -545,7 +545,8 @@ ${coverage}
 1. 先に ${effectiveTarget} 問分の疑問文（mood=interrogative / questionType / thread）を確定
 2. 残り ${n - effectiveTarget} 問を平叙文で設計
 
-各問に jp, en, parts, nuance, vocabHints を含める。疑問文には mood, questionType, thread を必須付与。`,
+各問に jp, en, parts, nuance, vocabHints を含める。疑問文には mood, questionType, thread を必須付与。
+vocabHints は [{ "jp": "辞書形", "en": "原形" }, ...] のオブジェクト配列のみ（文字列配列・空オブジェクト不可）。`,
   };
 }
 

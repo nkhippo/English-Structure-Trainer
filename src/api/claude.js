@@ -4,6 +4,7 @@ import { saveLastStep7TagSet } from '../constants/step7.js';
 import { buildPhraseGeneratePrompt, buildPhraseFeedbackEnrichPrompt } from '../prompts/phraseQuiz.js';
 import { getLevelConfig, buildPhraseChoices, planPhraseSession } from '../constants/framingExpressions.js';
 import { normalizePart } from '../utils/parts.js';
+import { normalizeVocabHints } from '../utils/vocabHints.js';
 import { enrichInterrogativeMetadata, countInterrogativeExercises } from '../utils/interrogative.js';
 
 const ENDPOINT = 'https://api.anthropic.com/v1/messages';
@@ -292,7 +293,7 @@ function normalizeExercise(ex) {
   const base = {
     ...ex,
     parts: (ex.parts || []).map(normalizePart).filter(Boolean),
-    vocabHints: Array.isArray(ex.vocabHints) ? ex.vocabHints : [],
+    vocabHints: normalizeVocabHints(ex.vocabHints),
     nuance: typeof ex.nuance === 'string' ? ex.nuance : '',
     enNative: typeof ex.enNative === 'string' ? ex.enNative.trim() : '',
     nuanceNative: typeof ex.nuanceNative === 'string' ? ex.nuanceNative : '',

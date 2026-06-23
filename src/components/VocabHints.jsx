@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { normalizeVocabHints } from '../utils/vocabHints.js';
 
 const C = { page: '#FAF9F6', line: '#EAE8E1', t1: '#1C1B19', t2: '#6B6862', t3: '#9A968D', accent: '#5B7FA5' };
 
@@ -7,12 +8,13 @@ const C = { page: '#FAF9F6', line: '#EAE8E1', t1: '#1C1B19', t2: '#6B6862', t3: 
  */
 export default function VocabHints({ hints, revealed = false }) {
   const [open, setOpen] = useState(false);
+  const items = useMemo(() => normalizeVocabHints(hints), [hints]);
 
   useEffect(() => {
     setOpen(false);
-  }, [hints]);
+  }, [items]);
 
-  if (!hints?.length || revealed) return null;
+  if (!items.length || revealed) return null;
 
   return (
     <div style={{ marginBottom: 10 }}>
@@ -48,11 +50,11 @@ export default function VocabHints({ hints, revealed = false }) {
           background: C.page,
         }}>
           <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {hints.map((h, i) => (
+            {items.map((h, i) => (
               <li key={i} style={{ display: 'flex', alignItems: 'baseline', gap: 8, fontSize: 13, lineHeight: 1.5 }}>
-                <span style={{ color: C.t2, flexShrink: 0 }}>{h.jp}</span>
+                {h.jp ? <span style={{ color: C.t2, flexShrink: 0 }}>{h.jp}</span> : null}
                 <span style={{ color: C.t3, flexShrink: 0 }}>→</span>
-                <span style={{ color: C.t1, fontWeight: 600 }}>{h.en}</span>
+                {h.en ? <span style={{ color: C.t1, fontWeight: 600 }}>{h.en}</span> : null}
               </li>
             ))}
           </ul>

@@ -365,7 +365,7 @@ export default function App() {
                   flexDirection: 'column',
                   gap: 8,
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
                     <span id="question-target-label" style={{ fontSize: 12, fontWeight: 600, color: C.t2 }}>
                       疑問文
                     </span>

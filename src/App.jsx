@@ -17,7 +17,7 @@ import { formatResultsMarkdown } from './utils/formatResultsMarkdown.js';
 import { getFollowUpCount, loadReviewHistory, saveReviewHistory } from './utils/reviewHistory.js';
 import { parseReviewMarkdown } from './utils/parseReviewMarkdown.js';
 import ReviewMarkdownPanel from './components/ReviewMarkdownPanel.jsx';
-import { aggregateCoreErrorTags, formatCoreTagSummary, DEFAULT_QUESTION_TARGETS, getMaxNaturalForStep } from './constants/essences.js';
+import { aggregateCoreErrorTags, formatCoreTagSummary, DEFAULT_QUESTION_TARGETS, getDefaultQuestionTarget, getMaxNaturalForStep } from './constants/essences.js';
 import { countInterrogativeExercises } from './utils/interrogative.js';
 
 const C = { page: '#FAF9F6', card: '#FFFFFF', line: '#EAE8E1', t1: '#1C1B19', t2: '#6B6862', t3: '#9A968D', ink: '#1C1B19' };
@@ -78,7 +78,7 @@ export default function App() {
   const showSessionFollowUp = sessionFollowUpCount > 0;
   const maxNatural = getMaxNaturalForStep(step);
   const questionTarget = Math.min(
-    questionTargetByStep[step] ?? DEFAULT_QUESTION_TARGETS[step] ?? 0,
+    questionTargetByStep[step] ?? getDefaultQuestionTarget(step),
     maxNatural,
   );
 

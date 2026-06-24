@@ -29,15 +29,6 @@ export const STEP_ESSENCE = {
   7: `糸1=${STEP7_THREADS.thread1.title.split('：')[0]}（助動詞前置）／糸2=${STEP7_THREADS.thread2.title.split('：')[0]}（空所＋移動）。**糸は疑問・倒置・強調・仮定法倒置を束ねるが、比較・省略・話法はどちらにも乗らない**＝糸は部分的統一原理であって網羅ではない。`,
 };
 
-/** Default interrogative question targets for new sets (Steps 3–7). */
-export const DEFAULT_QUESTION_TARGETS = {
-  3: 2,
-  4: 2,
-  5: 2,
-  6: 2,
-  7: 2,
-};
-
 /**
  * Per-STEP policy for interrogative sentence practice (production).
  * @type {Record<number, {
@@ -83,6 +74,16 @@ export const STEP_QUESTION_POLICY = {
   },
 };
 
+export function getMaxNaturalForStep(step) {
+  const policy = STEP_QUESTION_POLICY[step];
+  return typeof policy?.maxNatural === 'number' ? policy.maxNatural : 7;
+}
+
+/** Default interrogative count per STEP (= maxNatural). */
+export const DEFAULT_QUESTION_TARGETS = Object.fromEntries(
+  Object.keys(STEP_QUESTION_POLICY).map((key) => [Number(key), getMaxNaturalForStep(Number(key))]),
+);
+
 const QUESTION_TYPE_LABELS = {
   yesno: 'Yes/No疑問（糸1：助動詞前置）',
   wh: 'wh疑問（糸2：空所を文頭へ）',
@@ -91,7 +92,7 @@ const QUESTION_TYPE_LABELS = {
 };
 
 export function getDefaultQuestionTarget(step) {
-  return DEFAULT_QUESTION_TARGETS[step] ?? 0;
+  return getMaxNaturalForStep(step);
 }
 
 export function getEffectiveQuestionTarget(step, questionTarget) {
@@ -99,11 +100,6 @@ export function getEffectiveQuestionTarget(step, questionTarget) {
   const policy = STEP_QUESTION_POLICY[step];
   const maxNatural = policy && typeof policy.maxNatural === 'number' ? policy.maxNatural : 7;
   return Math.min(questionTarget, maxNatural);
-}
-
-export function getMaxNaturalForStep(step) {
-  const policy = STEP_QUESTION_POLICY[step];
-  return typeof policy?.maxNatural === 'number' ? policy.maxNatural : 7;
 }
 
 export function getQuestionPolicyForStep(step) {

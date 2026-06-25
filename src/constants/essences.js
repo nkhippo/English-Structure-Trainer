@@ -63,7 +63,7 @@ export const STEP_QUESTION_POLICY = {
     allowedTypes: ['yesno', 'wh', 'indirect'],
     preferred: 'indirect',
     whatToQuestion: 'wh/if 節を名詞節Xとして埋め込む。直接疑問との対比も可',
-    maxNatural: 5,
+    maxNatural: 4,
     notes: '主語wh疑問（"Who broke it?"）は助動詞前置も移動も起きず平叙文に見える——時々混ぜ、間接疑問との対比で糸1/糸2の実感を持てるようにする',
   },
   7: {
@@ -79,10 +79,14 @@ export function getMaxNaturalForStep(step) {
   return typeof policy?.maxNatural === 'number' ? policy.maxNatural : 7;
 }
 
-/** Default interrogative count per STEP (= maxNatural). */
-export const DEFAULT_QUESTION_TARGETS = Object.fromEntries(
-  Object.keys(STEP_QUESTION_POLICY).map((key) => [Number(key), getMaxNaturalForStep(Number(key))]),
-);
+/** Default interrogative targets per STEP (slider initial values). */
+export const DEFAULT_QUESTION_TARGETS = {
+  3: 3,
+  4: 2,
+  5: 1,
+  6: 2,
+  7: 1,
+};
 
 const QUESTION_TYPE_LABELS = {
   yesno: 'Yes/No疑問（糸1：助動詞前置）',
@@ -92,7 +96,7 @@ const QUESTION_TYPE_LABELS = {
 };
 
 export function getDefaultQuestionTarget(step) {
-  return getMaxNaturalForStep(step);
+  return DEFAULT_QUESTION_TARGETS[step] ?? 0;
 }
 
 export function getEffectiveQuestionTarget(step, questionTarget) {

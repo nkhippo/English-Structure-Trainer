@@ -1,11 +1,12 @@
-import { buildGeneratePrompt, buildInterrogativeRegeneratePrompt, buildCheckPrompt, buildEnNativePrompt, shuffleArray } from '../prompts/index.js';
+import { buildGeneratePrompt, buildInterrogativeRegeneratePrompt, buildSingleExerciseRegeneratePrompt, buildCheckPrompt, buildEnNativePrompt, shuffleArray } from '../prompts/index.js';
 import { ERROR_TAG_CODES, getEffectiveQuestionTarget } from '../constants/essences.js';
 import { saveLastStep7TagSet } from '../constants/step7.js';
 import { buildPhraseGeneratePrompt, buildPhraseFeedbackEnrichPrompt } from '../prompts/phraseQuiz.js';
 import { getLevelConfig, buildPhraseChoices, planPhraseSession } from '../constants/framingExpressions.js';
 import { normalizePart } from '../utils/parts.js';
 import { normalizeVocabHints } from '../utils/vocabHints.js';
-import { enrichInterrogativeMetadata, countInterrogativeExercises } from '../utils/interrogative.js';
+import { enrichInterrogativeMetadata, countInterrogativeExercises, inferInterrogativeMood } from '../utils/interrogative.js';
+import { getExerciseValidationIssue, validateSetLevelIssues } from '../utils/exerciseValidation.js';
 
 const ENDPOINT = 'https://api.anthropic.com/v1/messages';
 const MODEL_GENERATE = 'claude-haiku-4-5-20251001';
@@ -326,6 +327,109 @@ function mergePartsFromPrevious(nextExercises, previousExercises) {
   });
 }
 
+const MAX_SINGLE_REGEN_RETRIES = 2;
+const MAX_COUNT_REGEN_RETRIES = 2;
+
+async function regenerateSingleExercise(apiKey, stepInfo, step, n, index, issue, siblings, effectiveTarget, callOpts) {
+  const siblingJps = siblings.filter((_, i) => i !== index).map((ex) => ex.jp).filter(Boolean);
+  const target = siblings[index];
+  const mood = issue === 'missing_yz_key'
+    ? 'declarative'
+    : inferInterrogativeMood(target) === 'interrogative' ? 'interrogative' : 'declarative';
+
+  const { system, user } = buildSingleExerciseRegeneratePrompt(stepInfo, step, n, {
+    issue, index, siblingJps, mood, effectiveTarget,
+  });
+  const raw = await callClaude(apiKey, system, user, {
+    ...callOpts,
+    prefill: '{',
+    maxTokens: MAX_TOKENS_GENERATE,
+    debug: { operation: `regenerate-single-${issue}`, step: step ?? null },
+  });
+  return parseJsonObject(raw);
+}
+
+async function repairPerExerciseIssues(apiKey, stepInfo, step, n, exercises, effectiveTarget, callOpts) {
+  const normalized = [...exercises];
+  for (let i = 0; i < normalized.length; i++) {
+    let issue = getExerciseValidationIssue(normalized[i], step);
+    let retries = 0;
+    while (issue && retries < MAX_SINGLE_REGEN_RETRIES) {
+      try {
+        const replacement = await regenerateSingleExercise(
+          apiKey, stepInfo, step, n, i, issue, normalized, effectiveTarget, callOpts,
+        );
+        normalized[i] = normalizeExercise(replacement);
+      } catch {
+        break;
+      }
+      issue = getExerciseValidationIssue(normalized[i], step);
+      retries++;
+    }
+  }
+  return normalized;
+}
+
+async function repairSetLevelIssues(apiKey, stepInfo, step, n, exercises, effectiveTarget, callOpts) {
+  let normalized = [...exercises];
+  for (const setIssue of validateSetLevelIssues(normalized, step)) {
+    const targetIdx = setIssue.index >= 0 ? setIssue.index : 0;
+    let retries = 0;
+    while (retries < MAX_SINGLE_REGEN_RETRIES) {
+      try {
+        const replacement = await regenerateSingleExercise(
+          apiKey, stepInfo, step, n, targetIdx, setIssue.kind, normalized, effectiveTarget, callOpts,
+        );
+        normalized[targetIdx] = normalizeExercise(replacement);
+        if (!validateSetLevelIssues(normalized, step).length) break;
+      } catch {
+        break;
+      }
+      retries++;
+    }
+  }
+  return normalized;
+}
+
+async function repairInterrogativeCount(apiKey, stepInfo, step, n, exercises, effectiveTarget, callOpts, previousExercises) {
+  let normalized = exercises;
+  let countRetries = 0;
+
+  while (countRetries < MAX_COUNT_REGEN_RETRIES) {
+    const interrogativeCount = countInterrogativeExercises(normalized);
+    if (interrogativeCount === effectiveTarget) break;
+
+    const issue = interrogativeCount > effectiveTarget ? 'too_many' : 'too_few';
+    const retry = buildInterrogativeRegeneratePrompt(
+      stepInfo, step, n, effectiveTarget, effectiveTarget, { issue },
+    );
+    const raw = await callClaude(apiKey, retry.system, retry.user, {
+      ...callOpts,
+      debug: { operation: `generate-retry-interrogative-${issue}`, step: step ?? null },
+    });
+    normalized = mergePartsFromPrevious(parseJsonArray(raw), previousExercises).map(normalizeExercise);
+    normalized = await repairPerExerciseIssues(apiKey, stepInfo, step, n, normalized, effectiveTarget, callOpts);
+    normalized = await repairSetLevelIssues(apiKey, stepInfo, step, n, normalized, effectiveTarget, callOpts);
+    countRetries++;
+  }
+
+  return normalized;
+}
+
+async function validateAndRepairExercises(apiKey, stepInfo, step, n, exercises, effectiveTarget, callOpts, previousExercises) {
+  let normalized = exercises.map(normalizeExercise);
+  normalized = await repairPerExerciseIssues(apiKey, stepInfo, step, n, normalized, effectiveTarget, callOpts);
+  normalized = await repairSetLevelIssues(apiKey, stepInfo, step, n, normalized, effectiveTarget, callOpts);
+
+  if (effectiveTarget > 0) {
+    normalized = await repairInterrogativeCount(
+      apiKey, stepInfo, step, n, normalized, effectiveTarget, callOpts, previousExercises,
+    );
+  }
+
+  return normalized;
+}
+
 // ── Public API ───────────────────────────────────────────────────────────────
 
 /**
@@ -352,25 +456,18 @@ export async function generateExercises(apiKey, stepInfo, n = EXERCISES_PER_SET,
     ? getEffectiveQuestionTarget(step, questionTarget ?? 0)
     : 0;
 
-  if (effectiveTarget > 0) {
-    const interrogativeCount = countInterrogativeExercises(exercises.map(normalizeExercise));
-    if (interrogativeCount !== effectiveTarget) {
-      const issue = interrogativeCount > effectiveTarget ? 'too_many' : 'too_few';
-      const retry = buildInterrogativeRegeneratePrompt(
-        stepInfo, step, n, effectiveTarget, questionTarget ?? effectiveTarget, { issue },
-      );
-      raw = await callClaude(apiKey, retry.system, retry.user, {
-        ...callOpts,
-        debug: { operation: `generate-retry-interrogative-${issue}`, step: step ?? null },
-      });
-      exercises = mergePartsFromPrevious(parseJsonArray(raw), firstExercises);
-    }
+  if (!reviewMarkdown && step >= 3 && step <= 7) {
+    exercises = await validateAndRepairExercises(
+      apiKey, stepInfo, step, n, exercises, effectiveTarget, callOpts, firstExercises,
+    );
+  } else {
+    exercises = exercises.map(normalizeExercise);
   }
 
   if (!Array.isArray(exercises) || exercises.length === 0) {
     throw new Error('生成結果が不正です');
   }
-  const normalized = shuffleArray(exercises.map(normalizeExercise));
+  const normalized = shuffleArray(exercises);
   if (step === 7) {
     const tags = [...new Set(normalized.map((ex) => ex.operationTag).filter(Boolean))];
     if (tags.length) saveLastStep7TagSet(tags);

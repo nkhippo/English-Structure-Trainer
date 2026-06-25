@@ -384,11 +384,6 @@ export default function App() {
                           );
                         })}
                       </div>
-                      {generationMode === 'interrogative' && (
-                        <p style={{ fontSize: 11, color: C.t3, margin: 0, lineHeight: 1.4 }}>
-                          このSTEPの構造を使った疑問の作り方を反復（構造網羅は対象外）
-                        </p>
-                      )}
                     </div>
                   )}
                   <button type="button" onClick={handleGenerate} disabled={isGenerating} style={{

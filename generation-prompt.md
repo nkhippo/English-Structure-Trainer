@@ -10,7 +10,8 @@
 |------|-----|
 | モデル | `claude-haiku-4-5-20251001` |
 | max_tokens | 8192 |
-| 新規セット | 7問（`EXERCISES_PER_SET`） |
+| 新規セット（平叙） | 7問（`DECLARATIVE_SET_SIZE`） |
+| 新規セット（疑問ドリル） | 5問（`INTERROGATIVE_DRILL_SIZE`、Step 3–5 のみ） |
 | 弱点克服 | 前回問数 − 2（7→5→3→1） |
 | 返却形式 | JSON 配列のみ（assistant prefill `[`） |
 | テーマ | 18テーマプールから各問1つ（セット内で重複回避） |
@@ -22,10 +23,11 @@
 
 | パターン | 問数 | 追加入力 |
 |---------|------|---------|
-| 新規作成（Step 3〜7） | 7問 | STEP_ESSENCE + STEP_COVERAGE + Step別制約 |
+| 新規作成（Step 3〜5） | 平叙7問 / 疑問5問 | `generationMode` + `buildDeclarativeSection` / `buildInterrogativeOnlySection` |
+| 新規作成（Step 6〜7） | 平叙7問のみ | `generationMode: declarative` 固定 |
 | 弱点克服（再出題） | 前回 −2 | 前回答え合わせ Markdown + core 誤りタグ集計 |
 
-> **UI 上の疑問文数スライダーは未実装**（検討後リバート済み）。疑問文の量はプロンプト指示のみで制御する。
+> **mixed モード（1セット内に平叙＋疑問混在）は廃止**（改修5）。Step 3–5 は UI トグルで平叙/疑問を排他的に選択する。
 
 ---
 
@@ -59,33 +61,29 @@
 
 ## Step 別の追加制約（生成）
 
-### Step 3 — 動詞の変化・疑問・否定
+### Step 3 — 動詞の変化（平叙セット）
 
-**`buildStep3GenerateExtra` + `STEP_COVERAGE[3]`**
+**`buildStep3GenerateExtra` + `STEP_COVERAGE[3]`（declarative モード）**
 
-- **少なくとも2問** は疑問文または否定文
-- 疑問文: Yes/No疑問（助動詞前置）と wh疑問（空所を文頭へ）の**両方**をセット内でカバー
-- 否定文: 助動詞 + not
-- jp に疑問・否定の手がかり（「〜ですか」「〜ません」等）を自然に含める
-- MECE: うち1問は wh疑問。時制×相をサンプリング網羅
+- 全問 mood=declarative。否定文を1問以上含めてもよい
+- MECE: 時制×相をサンプリング網羅
 
-**現状の課題:** 「少なくとも2問」は否定文と合算のため、実際の疑問文は1問程度にとどまることが多い。
+**疑問ドリル（interrogative モード・5問）:** yesno と wh の両方を含む全問疑問。構造網羅は要求しない。
 
 ### Step 4〜6
 
-- Step 固有の `STEP_COVERAGE` のみ（疑問文の明示的割当なし）
+- **平叙モード:** Step 固有の `STEP_COVERAGE` をセット全体で網羅
 - Step 4: 同じ形・異なる役割を最低2問、minimal pair 1組
-- Step 5: 関係代名詞・関係副詞・what名詞節・同格that を別カテゴリでカバー
+- Step 5: 関係代名詞・関係副詞・what名詞節・同格that を別カテゴリでカバー、gap対比1問
 - Step 6: キーセンテンス型（Y+Z共起）最低1問、副詞節・名詞節・等位接続を網羅
+- **疑問ドリル（Step 4–5 のみ）:** 全問疑問・構造網羅は対象外
 
-### Step 7 — 発展構文
+### Step 7 — 発展構文（平叙のみ）
 
-- 各問に `operationTag`（比較 / 仮定法 / **疑問** / 倒置・強調 / 否定 / 話法 / 省略）
+- 各問に `operationTag`（比較 / 仮定法 / 倒置・強調 / 否定 / 話法 / 省略）— **「疑問」タグは廃止**
 - 1セットで **2〜3種類の operationTag を混在**（直前セットと同じ構成を避ける）
 - **最低1問** は「倒置/強調」＋否定副詞句による倒置
 - 全問に `cefr` / `thread`（糸1=助動詞前置 / 糸2=空所+移動）
-
-**現状の課題:** 「疑問」タグは7種の1つに過ぎず、7問中1問程度が上限に近い。
 
 ---
 
@@ -102,11 +100,11 @@
 
 | ファイル | 内容 |
 |---------|------|
-| `src/prompts/index.js` | プロンプト本体 |
+| `src/prompts/questionPractice/` | declarative / interrogativeOnly モード別プロンプト |
 | `src/constants/essences.js` | STEP_ESSENCE / STEP_COVERAGE / ERROR_TAXONOMY |
 | `src/constants/steps.js` | Step 定義・シード問題 |
 | `src/constants/step7.js` | operationTag・糸1/糸2・倒置リスト |
 | `essences.md` | エッセンス・タクソノミーの人間向け要約 |
 | `prompt-review-brief.md` | Claude 相談用の統合資料 |
 
-*最終更新: 2026-06-22（疑問文スライダー仕様リバート後）*
+*最終更新: 2026-06-23（改修5: mixed廃止・モード分離）*

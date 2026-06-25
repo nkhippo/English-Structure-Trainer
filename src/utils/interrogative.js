@@ -36,8 +36,6 @@ export function inferInterrogativeMood(ex) {
     return 'interrogative';
   }
 
-  if (ex.operationTag === '疑問') return 'interrogative';
-
   const hasEmbeddedClause = /\b(whether|if)\s+\w/i.test(en)
     || /\b(what|who|where|when|why|how|which)\s+\w+/i.test(en);
   const hasQuestionFrame = /\b(know|wonder|asked|tell|remember|forget|sure|unsure|doubt|check|find out|explain|understand|decide)\b/i.test(en);

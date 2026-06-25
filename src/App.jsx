@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { STEPS } from './constants/steps.js';
-import { getStoredApiKey, clearApiKey, generateExercises, generateEnNative, checkAnswers, EXERCISES_PER_SET, POINTS_PER_QUESTION } from './api/claude.js';
+import { getStoredApiKey, clearApiKey, generateExercises, generateEnNative, checkAnswers, POINTS_PER_QUESTION } from './api/claude.js';
 import ApiKeyInput from './components/ApiKeyInput.jsx';
 import StepTabs from './components/StepTabs.jsx';
 import QuestionCard from './components/QuestionCard.jsx';
@@ -17,7 +17,7 @@ import { formatResultsMarkdown } from './utils/formatResultsMarkdown.js';
 import { getFollowUpCount, loadReviewHistory, saveReviewHistory } from './utils/reviewHistory.js';
 import { parseReviewMarkdown } from './utils/parseReviewMarkdown.js';
 import ReviewMarkdownPanel from './components/ReviewMarkdownPanel.jsx';
-import { aggregateCoreErrorTags, formatCoreTagSummary, DEFAULT_QUESTION_TARGETS, getDefaultQuestionTarget, getMaxNaturalForStep } from './constants/essences.js';
+import { aggregateCoreErrorTags, formatCoreTagSummary, STEP_MODES, resolveGenerationMode, getSetSizeForMode } from './constants/essences.js';
 import { countInterrogativeExercises } from './utils/interrogative.js';
 
 const C = { page: '#FAF9F6', card: '#FFFFFF', line: '#EAE8E1', t1: '#1C1B19', t2: '#6B6862', t3: '#9A968D', ink: '#1C1B19' };
@@ -44,7 +44,7 @@ export default function App() {
   const [markdownFileError, setMarkdownFileError] = useState('');
   const [markdownFileSuccess, setMarkdownFileSuccess] = useState('');
   const [enNativeLoadingKey, setEnNativeLoadingKey] = useState(null);
-  const [questionTargetByStep, setQuestionTargetByStep] = useState(() => ({ ...DEFAULT_QUESTION_TARGETS }));
+  const [generationModeByStep, setGenerationModeByStep] = useState({ 3: 'declarative', 4: 'declarative', 5: 'declarative' });
 
   const isPhrase = step === 'phrase';
   const sd = isPhrase ? null : STEPS[step];
@@ -76,29 +76,12 @@ export default function App() {
     ? getFollowUpCount(storedReview.questionCount)
     : 0;
   const showSessionFollowUp = sessionFollowUpCount > 0;
-  const maxNatural = getMaxNaturalForStep(step);
-  const questionTarget = Math.min(
-    questionTargetByStep[step] ?? getDefaultQuestionTarget(step),
-    maxNatural,
-  );
-
-  useEffect(() => {
-    setQuestionTargetByStep((prev) => {
-      let changed = false;
-      const next = { ...prev };
-      for (const s of Object.keys(DEFAULT_QUESTION_TARGETS).map(Number)) {
-        const max = getMaxNaturalForStep(s);
-        const cur = next[s] ?? DEFAULT_QUESTION_TARGETS[s] ?? 0;
-        if (cur > max) {
-          next[s] = max;
-          changed = true;
-        }
-      }
-      return changed ? next : prev;
-    });
-  }, []);
+  const availableModes = STEP_MODES[step] ?? ['declarative'];
+  const generationMode = resolveGenerationMode(step, generationModeByStep[step] ?? 'declarative');
+  const setSize = getSetSizeForMode(generationMode, step);
+  const showModeToggle = availableModes.length > 1;
   const interrogativeCount = countInterrogativeExercises(exercises);
-  const questionNote = exercises.find((ex) => ex._questionNote)?._questionNote;
+  const isInterrogativeSet = generationMode === 'interrogative' && exercises.length > 0;
 
   // ── Step switch ─────────────────────────────────────────────────────────────
   const switchStep = (s) => {
@@ -128,9 +111,9 @@ export default function App() {
     setGeneratingMode('new');
     setError('');
     try {
-      const generated = await generateExercises(apiKey, sd, EXERCISES_PER_SET, {
+      const generated = await generateExercises(apiKey, sd, setSize, {
         step,
-        questionTarget,
+        generationMode,
       });
       setExercisesByStep((prev) => ({ ...prev, [step]: generated }));
       resetStepSession();
@@ -365,62 +348,49 @@ export default function App() {
                   flexDirection: 'column',
                   gap: 8,
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
-                    <span id="question-target-label" style={{ fontSize: 12, fontWeight: 600, color: C.t2 }}>
-                      疑問文
-                    </span>
-                    <div
-                      role="group"
-                      aria-labelledby="question-target-label"
-                      style={{ display: 'flex', alignItems: 'center', gap: 6 }}
-                    >
-                      <button
-                        type="button"
-                        aria-label="疑問文の数を減らす"
-                        onClick={() => setQuestionTargetByStep((prev) => ({
-                          ...prev,
-                          [step]: Math.max(0, questionTarget - 1),
-                        }))}
-                        disabled={isGenerating || questionTarget <= 0}
+                  {showModeToggle && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <div
+                        role="group"
+                        aria-label="出題モード"
                         style={{
-                          width: 28, height: 28, borderRadius: 7,
-                          border: `1px solid ${C.line}`, background: C.page,
-                          color: C.t1, fontSize: 16, lineHeight: 1,
-                          cursor: isGenerating || questionTarget <= 0 ? 'not-allowed' : 'pointer',
-                          opacity: isGenerating || questionTarget <= 0 ? 0.4 : 1,
-                          fontFamily: 'inherit', padding: 0,
+                          display: 'flex', borderRadius: 8, overflow: 'hidden',
+                          border: `1px solid ${C.line}`,
                         }}
                       >
-                        −
-                      </button>
-                      <span
-                        id="question-target"
-                        aria-live="polite"
-                        style={{ fontSize: 14, fontWeight: 700, color: C.t1, minWidth: 36, textAlign: 'center' }}
-                      >
-                        {questionTarget}<span style={{ fontSize: 11, fontWeight: 600, color: C.t3 }}> / {maxNatural}</span>
-                      </span>
-                      <button
-                        type="button"
-                        aria-label="疑問文の数を増やす"
-                        onClick={() => setQuestionTargetByStep((prev) => ({
-                          ...prev,
-                          [step]: Math.min(maxNatural, questionTarget + 1),
-                        }))}
-                        disabled={isGenerating || questionTarget >= maxNatural}
-                        style={{
-                          width: 28, height: 28, borderRadius: 7,
-                          border: `1px solid ${C.line}`, background: C.page,
-                          color: C.t1, fontSize: 16, lineHeight: 1,
-                          cursor: isGenerating || questionTarget >= maxNatural ? 'not-allowed' : 'pointer',
-                          opacity: isGenerating || questionTarget >= maxNatural ? 0.4 : 1,
-                          fontFamily: 'inherit', padding: 0,
-                        }}
-                      >
-                        +
-                      </button>
+                        {[
+                          { mode: 'declarative', label: '平叙文（7問）' },
+                          { mode: 'interrogative', label: '疑問文（5問）' },
+                        ].map(({ mode, label }) => {
+                          const active = generationMode === mode;
+                          return (
+                            <button
+                              key={mode}
+                              type="button"
+                              aria-pressed={active}
+                              onClick={() => setGenerationModeByStep((prev) => ({ ...prev, [step]: mode }))}
+                              disabled={isGenerating}
+                              style={{
+                                flex: 1, padding: '8px 6px', border: 'none',
+                                background: active ? C.ink : C.page,
+                                color: active ? '#fff' : C.t2,
+                                fontSize: 12, fontWeight: 700,
+                                cursor: isGenerating ? 'not-allowed' : 'pointer',
+                                fontFamily: 'inherit',
+                              }}
+                            >
+                              {label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {generationMode === 'interrogative' && (
+                        <p style={{ fontSize: 11, color: C.t3, margin: 0, lineHeight: 1.4 }}>
+                          このSTEPの構造を使った疑問の作り方を反復（構造網羅は対象外）
+                        </p>
+                      )}
                     </div>
-                  </div>
+                  )}
                   <button type="button" onClick={handleGenerate} disabled={isGenerating} style={{
                     width: '100%', padding: '11px 12px', borderRadius: 10, border: 'none',
                     background: C.ink, color: '#fff', fontSize: 14, fontWeight: 700,
@@ -431,18 +401,9 @@ export default function App() {
                   </button>
                 </div>
               )}
-              {questionNote && (
-                <p style={{
-                  fontSize: 12, color: C.t2, margin: '8px 0 0',
-                  padding: '8px 12px', borderRadius: 8,
-                  background: '#F5F4F0', border: `1px solid ${C.line}`,
-                }}>
-                  {questionNote}
-                </p>
-              )}
-              {exercises.length > 0 && questionTarget > 0 && (
+              {isInterrogativeSet && (
                 <p style={{ fontSize: 12, color: C.t2, margin: '6px 0 0', textAlign: 'center' }}>
-                  疑問文 {interrogativeCount} / {questionTarget}問
+                  疑問ドリル {interrogativeCount} / {exercises.length}問
                 </p>
               )}
               {revealed && showSessionFollowUp && (

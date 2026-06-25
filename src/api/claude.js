@@ -1,5 +1,6 @@
-import { buildGeneratePrompt, buildInterrogativeRegeneratePrompt, buildSingleExerciseRegeneratePrompt, buildCheckPrompt, buildEnNativePrompt, shuffleArray } from '../prompts/index.js';
-import { ERROR_TAG_CODES, getEffectiveQuestionTarget } from '../constants/essences.js';
+import { buildGeneratePrompt, buildSingleExerciseRegeneratePrompt, buildCheckPrompt, buildEnNativePrompt, shuffleArray } from '../prompts/index.js';
+import { buildInterrogativeRegeneratePrompt } from '../prompts/questionPractice/interrogativeOnly.js';
+import { ERROR_TAG_CODES, resolveGenerationMode, INTERROGATIVE_DRILL_SIZE_STEP5_FALLBACK } from '../constants/essences.js';
 import { saveLastStep7TagSet } from '../constants/step7.js';
 import { buildPhraseGeneratePrompt, buildPhraseFeedbackEnrichPrompt } from '../prompts/phraseQuiz.js';
 import { getLevelConfig, buildPhraseChoices, planPhraseSession } from '../constants/framingExpressions.js';
@@ -20,6 +21,7 @@ export const CHECK_BATCH_SIZE = 1;
 
 /** Number of exercises generated and shown per session. */
 export const EXERCISES_PER_SET = 7;
+export const INTERROGATIVE_DRILL_SIZE = 5;
 /** Phrase quiz: questions per API generation (sampled from level bank). */
 export const PHRASE_QUESTIONS_PER_SET = 10;
 /** Points awarded per question (total = EXERCISES_PER_SET × POINTS_PER_QUESTION). */
@@ -330,15 +332,15 @@ function mergePartsFromPrevious(nextExercises, previousExercises) {
 const MAX_SINGLE_REGEN_RETRIES = 2;
 const MAX_COUNT_REGEN_RETRIES = 2;
 
-async function regenerateSingleExercise(apiKey, stepInfo, step, n, index, issue, siblings, effectiveTarget, callOpts) {
+async function regenerateSingleExercise(apiKey, stepInfo, step, n, index, issue, siblings, generationMode, callOpts) {
   const siblingJps = siblings.filter((_, i) => i !== index).map((ex) => ex.jp).filter(Boolean);
   const target = siblings[index];
-  const mood = issue === 'missing_yz_key'
+  const mood = issue === 'missing_yz_key' || generationMode === 'declarative'
     ? 'declarative'
-    : inferInterrogativeMood(target) === 'interrogative' ? 'interrogative' : 'declarative';
+    : 'interrogative';
 
   const { system, user } = buildSingleExerciseRegeneratePrompt(stepInfo, step, n, {
-    issue, index, siblingJps, mood, effectiveTarget,
+    issue, index, siblingJps, mood, generationMode,
   });
   const raw = await callClaude(apiKey, system, user, {
     ...callOpts,
@@ -349,39 +351,39 @@ async function regenerateSingleExercise(apiKey, stepInfo, step, n, index, issue,
   return parseJsonObject(raw);
 }
 
-async function repairPerExerciseIssues(apiKey, stepInfo, step, n, exercises, effectiveTarget, callOpts) {
+async function repairPerExerciseIssues(apiKey, stepInfo, step, n, exercises, generationMode, callOpts) {
   const normalized = [...exercises];
   for (let i = 0; i < normalized.length; i++) {
-    let issue = getExerciseValidationIssue(normalized[i], step);
+    let issue = getExerciseValidationIssue(normalized[i], step, generationMode);
     let retries = 0;
     while (issue && retries < MAX_SINGLE_REGEN_RETRIES) {
       try {
         const replacement = await regenerateSingleExercise(
-          apiKey, stepInfo, step, n, i, issue, normalized, effectiveTarget, callOpts,
+          apiKey, stepInfo, step, n, i, issue, normalized, generationMode, callOpts,
         );
         normalized[i] = normalizeExercise(replacement);
       } catch {
         break;
       }
-      issue = getExerciseValidationIssue(normalized[i], step);
+      issue = getExerciseValidationIssue(normalized[i], step, generationMode);
       retries++;
     }
   }
   return normalized;
 }
 
-async function repairSetLevelIssues(apiKey, stepInfo, step, n, exercises, effectiveTarget, callOpts) {
+async function repairSetLevelIssues(apiKey, stepInfo, step, n, exercises, generationMode, callOpts) {
   let normalized = [...exercises];
-  for (const setIssue of validateSetLevelIssues(normalized, step)) {
+  for (const setIssue of validateSetLevelIssues(normalized, step, generationMode)) {
     const targetIdx = setIssue.index >= 0 ? setIssue.index : 0;
     let retries = 0;
     while (retries < MAX_SINGLE_REGEN_RETRIES) {
       try {
         const replacement = await regenerateSingleExercise(
-          apiKey, stepInfo, step, n, targetIdx, setIssue.kind, normalized, effectiveTarget, callOpts,
+          apiKey, stepInfo, step, n, targetIdx, setIssue.kind, normalized, generationMode, callOpts,
         );
         normalized[targetIdx] = normalizeExercise(replacement);
-        if (!validateSetLevelIssues(normalized, step).length) break;
+        if (!validateSetLevelIssues(normalized, step, generationMode).length) break;
       } catch {
         break;
       }
@@ -391,40 +393,46 @@ async function repairSetLevelIssues(apiKey, stepInfo, step, n, exercises, effect
   return normalized;
 }
 
-async function repairInterrogativeCount(apiKey, stepInfo, step, n, exercises, effectiveTarget, callOpts, previousExercises) {
+async function repairMoodConsistency(apiKey, stepInfo, step, n, exercises, generationMode, callOpts, previousExercises) {
+  if (generationMode !== 'interrogative') return exercises;
+
   let normalized = exercises;
   let countRetries = 0;
+  const expectedInterrogative = n;
 
   while (countRetries < MAX_COUNT_REGEN_RETRIES) {
     const interrogativeCount = countInterrogativeExercises(normalized);
-    if (interrogativeCount === effectiveTarget) break;
+    if (interrogativeCount === expectedInterrogative) break;
 
-    const issue = interrogativeCount > effectiveTarget ? 'too_many' : 'too_few';
-    const retry = buildInterrogativeRegeneratePrompt(
-      stepInfo, step, n, effectiveTarget, effectiveTarget, { issue },
-    );
+    const issue = interrogativeCount < expectedInterrogative ? 'wrong_mood' : 'wrong_mood';
+    const retry = buildInterrogativeRegeneratePrompt(stepInfo, step, n, { issue });
     const raw = await callClaude(apiKey, retry.system, retry.user, {
       ...callOpts,
       debug: { operation: `generate-retry-interrogative-${issue}`, step: step ?? null },
     });
     normalized = mergePartsFromPrevious(parseJsonArray(raw), previousExercises).map(normalizeExercise);
-    normalized = await repairPerExerciseIssues(apiKey, stepInfo, step, n, normalized, effectiveTarget, callOpts);
-    normalized = await repairSetLevelIssues(apiKey, stepInfo, step, n, normalized, effectiveTarget, callOpts);
+    normalized = await repairPerExerciseIssues(apiKey, stepInfo, step, n, normalized, generationMode, callOpts);
+    normalized = await repairSetLevelIssues(apiKey, stepInfo, step, n, normalized, generationMode, callOpts);
     countRetries++;
   }
 
   return normalized;
 }
 
-async function validateAndRepairExercises(apiKey, stepInfo, step, n, exercises, effectiveTarget, callOpts, previousExercises) {
+async function validateAndRepairExercises(apiKey, stepInfo, step, n, exercises, generationMode, callOpts, previousExercises) {
   let normalized = exercises.map(normalizeExercise);
-  normalized = await repairPerExerciseIssues(apiKey, stepInfo, step, n, normalized, effectiveTarget, callOpts);
-  normalized = await repairSetLevelIssues(apiKey, stepInfo, step, n, normalized, effectiveTarget, callOpts);
+  normalized = await repairPerExerciseIssues(apiKey, stepInfo, step, n, normalized, generationMode, callOpts);
+  normalized = await repairSetLevelIssues(apiKey, stepInfo, step, n, normalized, generationMode, callOpts);
 
-  if (effectiveTarget > 0) {
-    normalized = await repairInterrogativeCount(
-      apiKey, stepInfo, step, n, normalized, effectiveTarget, callOpts, previousExercises,
+  if (generationMode === 'interrogative') {
+    normalized = await repairMoodConsistency(
+      apiKey, stepInfo, step, n, normalized, generationMode, callOpts, previousExercises,
     );
+  } else if (generationMode === 'declarative') {
+    const declarativeCount = normalized.filter((ex) => inferInterrogativeMood(ex) !== 'interrogative').length;
+    if (declarativeCount < n) {
+      normalized = await repairPerExerciseIssues(apiKey, stepInfo, step, n, normalized, generationMode, callOpts);
+    }
   }
 
   return normalized;
@@ -440,8 +448,9 @@ async function validateAndRepairExercises(apiKey, stepInfo, step, n, exercises, 
  * @param {number} n  Number of exercises to generate (default EXERCISES_PER_SET)
  * @returns {Promise<Exercise[]>}
  */
-export async function generateExercises(apiKey, stepInfo, n = EXERCISES_PER_SET, { step, reviewMarkdown, coreTagSummary, questionTarget } = {}) {
-  const { system, user } = buildGeneratePrompt(stepInfo, n, { step, reviewMarkdown, coreTagSummary, questionTarget });
+export async function generateExercises(apiKey, stepInfo, n = EXERCISES_PER_SET, { step, reviewMarkdown, coreTagSummary, generationMode: rawMode } = {}) {
+  const generationMode = resolveGenerationMode(step, rawMode ?? 'declarative');
+  const { system, user } = buildGeneratePrompt(stepInfo, n, { step, reviewMarkdown, coreTagSummary, generationMode });
   const callOpts = {
     prefill: '[',
     maxTokens: MAX_TOKENS_GENERATE,
@@ -452,14 +461,23 @@ export async function generateExercises(apiKey, stepInfo, n = EXERCISES_PER_SET,
   let exercises = parseJsonArray(raw);
   const firstExercises = exercises;
 
-  const effectiveTarget = !reviewMarkdown && step >= 3 && step <= 7
-    ? getEffectiveQuestionTarget(step, questionTarget ?? 0)
-    : 0;
-
   if (!reviewMarkdown && step >= 3 && step <= 7) {
     exercises = await validateAndRepairExercises(
-      apiKey, stepInfo, step, n, exercises, effectiveTarget, callOpts, firstExercises,
+      apiKey, stepInfo, step, n, exercises, generationMode, callOpts, firstExercises,
     );
+
+    if (generationMode === 'interrogative' && step === 5 && n === INTERROGATIVE_DRILL_SIZE) {
+      const diversityIssues = validateSetLevelIssues(exercises, step, generationMode);
+      if (diversityIssues.length > 0) {
+        const fallbackN = INTERROGATIVE_DRILL_SIZE_STEP5_FALLBACK;
+        const fallbackPrompt = buildGeneratePrompt(stepInfo, fallbackN, { step, generationMode });
+        raw = await callClaude(apiKey, fallbackPrompt.system, fallbackPrompt.user, callOpts);
+        exercises = parseJsonArray(raw);
+        exercises = await validateAndRepairExercises(
+          apiKey, stepInfo, step, fallbackN, exercises, generationMode, callOpts, exercises,
+        );
+      }
+    }
   } else {
     exercises = exercises.map(normalizeExercise);
   }

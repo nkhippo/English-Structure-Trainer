@@ -42,7 +42,16 @@ Step 7 の糸定義の実装: `src/constants/step7.js`（`STEP7_THREADS`）
 
 ---
 
-## STEP 網羅規則（STEP_COVERAGE）
+## STEP_MODES（改修5）
+
+| Step | 選べるモード | 問数 |
+|------|------------|:---:|
+| 3,4,5 | declarative / interrogative | 7 / 5 |
+| 6,7 | declarative のみ | 7 |
+
+`STEP_QUESTION_POLICY.maxNatural` は interrogative モードの**可用性根拠**（実行時 cap には使わない）。
+
+---
 
 各セット（7問）内で守る MECE 出題規則。詳細は `src/constants/essences.js` の `STEP_COVERAGE`。
 

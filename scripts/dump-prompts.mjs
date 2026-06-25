@@ -3,7 +3,7 @@
  * Usage: npm run dump-prompts
  *
  * Output:
- *   prompt-dumps/generate/step{N}-default.md | step{N}-max.md
+ *   prompt-dumps/generate/step{N}-declarative.md | step{N}-interrogative.md
  *   prompt-dumps/check/step{N}.md
  */
 import fs from 'fs';
@@ -12,18 +12,16 @@ import { fileURLToPath } from 'url';
 import { STEPS } from '../src/constants/steps.js';
 import { buildGeneratePrompt, buildCheckPrompt } from '../src/prompts/index.js';
 import {
-  DEFAULT_QUESTION_TARGETS,
-  STEP_QUESTION_POLICY,
-  getEffectiveQuestionTarget,
-  getMaxNaturalForStep,
+  DECLARATIVE_SET_SIZE,
+  INTERROGATIVE_DRILL_SIZE,
+  STEP_MODES,
 } from '../src/constants/essences.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..', 'prompt-dumps');
 const GENERATE_DIR = path.join(ROOT, 'generate');
 const CHECK_DIR = path.join(ROOT, 'check');
-const N = 7;
-const SPEC_LABEL = 'work-request-question-practice 改修2+3（優先順位ラダー + overlap + 疑問数ちょうど effectiveTarget）';
+const SPEC_LABEL = 'work-request-mode-split 改修5（平叙/疑問モード分離・mixed廃止）';
 
 /** Per-step check sample: seed exercise + intentionally flawed attempt (jp/en/attempt aligned). */
 function pickSamplePair(stepInfo, step) {
@@ -44,7 +42,7 @@ function pickSamplePair(stepInfo, step) {
     return { ...ex, attempt: 'I want to know what did he said.' };
   }
   if (step === 7) {
-    const ex = stepInfo.exercises.find((e) => e.operationTag === '疑問') ?? stepInfo.exercises[0];
+    const ex = stepInfo.exercises.find((e) => e.operationTag === '倒置/強調') ?? stepInfo.exercises[0];
     return { ...ex, attempt: 'When she did join the meeting?' };
   }
   const ex = stepInfo.exercises[0];
@@ -65,34 +63,24 @@ fs.mkdirSync(CHECK_DIR, { recursive: true });
 
 for (let step = 3; step <= 7; step++) {
   const stepInfo = STEPS[step];
-  const policy = STEP_QUESTION_POLICY[step];
-  const maxNatural = policy?.maxNatural ?? '—';
+  const modes = STEP_MODES[step] ?? ['declarative'];
 
-  for (const { label, questionTarget } of [
-    { label: 'default', questionTarget: DEFAULT_QUESTION_TARGETS[step] },
-    { label: 'max', questionTarget: getMaxNaturalForStep(step) },
-  ]) {
-    const effectiveTarget = getEffectiveQuestionTarget(step, questionTarget);
-    const { system, user } = buildGeneratePrompt(stepInfo, N, { step, questionTarget });
-    const capped = questionTarget > effectiveTarget
-      ? `スライダー ${questionTarget} → effectiveTarget ${effectiveTarget}`
-      : label === 'max'
-        ? `（STEP上限 ${maxNatural}問 = effectiveTarget ${effectiveTarget}）`
-        : '（上限なし）';
+  for (const generationMode of modes) {
+    const n = generationMode === 'interrogative' ? INTERROGATIVE_DRILL_SIZE : DECLARATIVE_SET_SIZE;
+    const { system, user } = buildGeneratePrompt(stepInfo, n, { step, generationMode });
 
-    const content = `# Step ${step} — ${label}（問題生成）
+    const content = `# Step ${step} — ${generationMode}（問題生成）
 
 - 仕様: ${SPEC_LABEL}
 - 生成元: \`buildGeneratePrompt()\` in \`src/prompts/index.js\`
-- questionTarget（スライダー）: ${questionTarget}
-- effectiveTarget（優先順位3）: ${effectiveTarget}
-- maxNatural: ${maxNatural} — ${capped}
+- generationMode: ${generationMode}
+- 問数 n: ${n}
 
 ${formatMdBlock('System', system)}
 
 ${formatMdBlock('User', user)}
 `;
-    writeFile(path.join(GENERATE_DIR, `step${step}-${label}.md`), content);
+    writeFile(path.join(GENERATE_DIR, `step${step}-${generationMode}.md`), content);
   }
 
   const sample = pickSamplePair(stepInfo, step);
@@ -118,10 +106,10 @@ ${formatMdBlock('User', checkUser)}
   writeFile(path.join(CHECK_DIR, `step${step}.md`), checkContent);
 }
 
-// Remove legacy flat generate files if present (moved under generate/)
+// Remove legacy mixed-mode dumps
 for (let step = 3; step <= 7; step++) {
   for (const label of ['default', 'max']) {
-    const legacy = path.join(ROOT, `step${step}-${label}.md`);
+    const legacy = path.join(GENERATE_DIR, `step${step}-${label}.md`);
     if (fs.existsSync(legacy)) {
       fs.unlinkSync(legacy);
       console.log('removed legacy', legacy);

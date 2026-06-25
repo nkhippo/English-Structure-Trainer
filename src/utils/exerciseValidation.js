@@ -1,5 +1,5 @@
 import { STEP_QUESTION_POLICY } from '../constants/essences.js';
-import { inferInterrogativeMood, isCountableInterrogative, getUnnaturalJpIssue } from './interrogative.js';
+import { inferInterrogativeMood, getUnnaturalJpIssue } from './interrogative.js';
 
 /** @param {object[]} parts @param {object[]} acc */
 export function flattenParts(parts, acc = []) {
@@ -91,11 +91,6 @@ function validateStep7Scope(ex) {
   const en = (ex.en || '').trim();
   const tag = ex.operationTag;
 
-  if (tag === '疑問') {
-    if (isBasicWhQuestion(ex) && ex.thread !== '糸2') return 'scope';
-    return null;
-  }
-
   if (tag && STEP7_TAG_MARKERS[tag] && !STEP7_TAG_MARKERS[tag].test(en)) {
     return 'scope';
   }
@@ -104,7 +99,11 @@ function validateStep7Scope(ex) {
 
   const bareInfinitiveMain = /^\w+\s+(wants|wanted|likes|liked|needs|needed|plans|planned)\s+to\s+\w+/i.test(en)
     && !/\b(would|had|than|if|whether)\b/i.test(en);
-  if (bareInfinitiveMain && tag !== '疑問') return 'scope';
+  if (bareInfinitiveMain) return 'scope';
+
+  if (isBasicWhQuestion(ex) && tag === '倒置/強調' && ex.thread !== '糸2') {
+    return 'scope';
+  }
 
   return null;
 }
@@ -146,18 +145,14 @@ export function inferQuestionType(ex) {
   return null;
 }
 
-export function validateQuestionType(ex, step) {
+export function validateQuestionType(ex, step, generationMode = 'declarative') {
+  if (generationMode === 'declarative') return null;
+
   if (inferInterrogativeMood(ex) !== 'interrogative') return null;
   if (getUnnaturalJpIssue(ex.jp)) return 'unnatural';
 
   const policy = STEP_QUESTION_POLICY[step];
   if (!policy) return null;
-
-  if (step === 7) {
-    if (ex.operationTag !== '疑問') return 'wrong_type';
-    if (isBasicWhQuestion(ex)) return 'wrong_type';
-    return null;
-  }
 
   const qType = inferQuestionType(ex);
   const en = (ex.en || '').trim();
@@ -171,19 +166,67 @@ export function validateQuestionType(ex, step) {
   return null;
 }
 
+/** Classify Step5 relative structure for diversity checks. */
+export function classifyStep5RelativeType(ex) {
+  const parts = flattenParts(ex.parts);
+  const text = allPartText(ex);
+
+  if (parts.some((p) => p.r === 'X' && /\bwhat\b/i.test(p.t || ''))) return 'what_clause';
+  if (parts.some((p) => /同格/.test(p.n || '') || (p.r === 'Y' && /\bthat\b/i.test(p.t || '') && p.inner?.length))) {
+    return 'appositive_that';
+  }
+  if (parts.some((p) => p.r === 'Y' && /\b(where|when|why)\b/i.test(p.t || ''))) return 'relative_adverb';
+  if (parts.some((p) => p.r === 'Y' && /\b(who|which|that)\b/i.test(p.t || ''))) {
+    if (/\b(who|which|that)\s+\w+/i.test(text) && !/\b(who|which|that)\s+\w+\s+\w+/i.test(text)) {
+      return 'relative_pronoun_subject';
+    }
+    return 'relative_pronoun_object';
+  }
+  return 'other';
+}
+
+function validateMood(ex, generationMode) {
+  const mood = inferInterrogativeMood(ex);
+  if (generationMode === 'declarative' && mood === 'interrogative') return 'wrong_mood';
+  if (generationMode === 'interrogative' && mood !== 'interrogative') return 'wrong_mood';
+  return null;
+}
+
 /**
- * @returns {'scope'|'wrong_type'|'unnatural'|null}
+ * @returns {'scope'|'wrong_type'|'wrong_mood'|'unnatural'|null}
  */
-export function getExerciseValidationIssue(ex, step) {
+export function getExerciseValidationIssue(ex, step, generationMode = 'declarative') {
+  const moodIssue = validateMood(ex, generationMode);
+  if (moodIssue) return moodIssue;
   if (getUnnaturalJpIssue(ex.jp)) return 'unnatural';
-  const typeIssue = validateQuestionType(ex, step);
+  const typeIssue = validateQuestionType(ex, step, generationMode);
   if (typeIssue) return typeIssue;
   return validateScope(ex, step);
 }
 
-export function validateSetLevelIssues(exercises, step) {
+export function validateStep5InterrogativeDiversity(exercises) {
+  const counts = {};
+  for (const ex of exercises) {
+    const type = classifyStep5RelativeType(ex);
+    counts[type] = (counts[type] || 0) + 1;
+  }
+  for (const count of Object.values(counts)) {
+    if (count >= 3) {
+      const index = exercises.findIndex((ex) => classifyStep5RelativeType(ex) !== 'other');
+      return [{ kind: 'step5_diversity', index: index >= 0 ? index : 0 }];
+    }
+  }
+  return [];
+}
+
+export function validateSetLevelIssues(exercises, step, generationMode = 'declarative') {
+  if (generationMode === 'interrogative') {
+    if (step === 5) return validateStep5InterrogativeDiversity(exercises);
+    return [];
+  }
+
   if (step === 6 && !exercises.some(hasYzKeySentence)) {
-    const index = exercises.findIndex((ex) => !isCountableInterrogative(ex));
+    const index = exercises.findIndex((ex) => inferInterrogativeMood(ex) !== 'interrogative');
     return [{ kind: 'missing_yz_key', index: index >= 0 ? index : 0 }];
   }
   return [];

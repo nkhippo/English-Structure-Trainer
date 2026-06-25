@@ -66,45 +66,44 @@ export const STEP_QUESTION_POLICY = {
     maxNatural: 4,
     notes: '主語wh疑問（"Who broke it?"）は助動詞前置も移動も起きず平叙文に見える——時々混ぜ、間接疑問との対比で糸1/糸2の実感を持てるようにする',
   },
-  7: {
-    allowedTypes: ['operationTag'],
-    preferred: '—',
-    whatToQuestion: '糸の二重適用を回避（倒置=糸1のときは wh=糸2、強調cleft=糸2のときは Yes/No=糸1）。operationTag「疑問」の問はこの方針に従う',
-    maxNatural: 2,
-  },
 };
 
+export const DECLARATIVE_SET_SIZE = 7;
+export const INTERROGATIVE_DRILL_SIZE = 5;
+export const INTERROGATIVE_DRILL_SIZE_STEP5_FALLBACK = 3;
+
+/** Per-STEP available generation modes (MECE). */
+export const STEP_MODES = {
+  3: ['declarative', 'interrogative'],
+  4: ['declarative', 'interrogative'],
+  5: ['declarative', 'interrogative'],
+  6: ['declarative'],
+  7: ['declarative'],
+};
+
+export function resolveGenerationMode(step, mode) {
+  const allowed = STEP_MODES[step] ?? ['declarative'];
+  return allowed.includes(mode) ? mode : 'declarative';
+}
+
+export function getSetSizeForMode(generationMode, step) {
+  if (generationMode === 'interrogative' && step >= 3 && step <= 5) {
+    return INTERROGATIVE_DRILL_SIZE;
+  }
+  return DECLARATIVE_SET_SIZE;
+}
+
+/** maxNatural — interrogative モードの可用性根拠（実行時 cap には使わない） */
 export function getMaxNaturalForStep(step) {
   const policy = STEP_QUESTION_POLICY[step];
   return typeof policy?.maxNatural === 'number' ? policy.maxNatural : 7;
 }
 
-/** Default interrogative targets per STEP (slider initial values). */
-export const DEFAULT_QUESTION_TARGETS = {
-  3: 3,
-  4: 2,
-  5: 1,
-  6: 2,
-  7: 1,
-};
-
 const QUESTION_TYPE_LABELS = {
   yesno: 'Yes/No疑問（糸1：助動詞前置）',
   wh: 'wh疑問（糸2：空所を文頭へ）',
   indirect: '間接疑問（wh/if 節を名詞節Xとして埋め込む）',
-  operationTag: 'operationTag「疑問」に従う（Step 7）',
 };
-
-export function getDefaultQuestionTarget(step) {
-  return DEFAULT_QUESTION_TARGETS[step] ?? 0;
-}
-
-export function getEffectiveQuestionTarget(step, questionTarget) {
-  if (!questionTarget || questionTarget <= 0) return 0;
-  const policy = STEP_QUESTION_POLICY[step];
-  const maxNatural = policy && typeof policy.maxNatural === 'number' ? policy.maxNatural : 7;
-  return Math.min(questionTarget, maxNatural);
-}
 
 export function getQuestionPolicyForStep(step) {
   return STEP_QUESTION_POLICY[step] ?? null;
@@ -119,9 +118,7 @@ export function formatQuestionPolicyForPrompt(step) {
     .join(' / ');
   const preferred = policy.preferred === 'mix'
     ? 'yesno と wh をバランスよく混ぜる'
-    : policy.preferred === '—'
-      ? '（Step 7：operationTag と糸の相性で自動選択）'
-      : `${QUESTION_TYPE_LABELS[policy.preferred] ?? policy.preferred} を優先`;
+    : `${QUESTION_TYPE_LABELS[policy.preferred] ?? policy.preferred} を優先`;
   const maxNatural = typeof policy.maxNatural === 'number'
     ? `${policy.maxNatural}問`
     : String(policy.maxNatural);
@@ -134,8 +131,8 @@ export function formatQuestionPolicyForPrompt(step) {
 
 /** MECE coverage rules per STEP — appended to generate extras. */
 export const STEP_COVERAGE = {
-  3: `- 既存「疑問/否定を最低2問」に加え、**うち1問は wh疑問**（糸2の予告編）
-- 時制×相は「現在/過去 × 単純/進行/完了」をサンプリング網羅`,
+  3: `- 時制×相は「現在/過去 × 単純/進行/完了」をサンプリング網羅
+- 否定文を1問以上含めてもよい（mood=declarative のまま）`,
   4: `- **同じ形を異なる役割で最低2問**（例：to do を X と Y/Z）
 - 「役割≠形」の minimal pair を1組`,
   5: `- 関係代名詞・関係副詞・what名詞節・同格that を**別カテゴリとして**カバー

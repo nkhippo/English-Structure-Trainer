@@ -3,7 +3,6 @@
 export const STEP7_OPERATIONS = [
   { tag: '比較', label: '比べる', chapter: 24, chapterAnchor: 'ch-24' },
   { tag: '仮定法', label: '現実をずらす', chapter: 25, chapterAnchor: 'ch-25' },
-  { tag: '疑問', label: '文の種類を変える', chapter: 26, chapterAnchor: 'ch-26' },
   { tag: '倒置/強調', label: '強調・語順を動かす', chapter: 27, chapterAnchor: 'ch-27' },
   { tag: '否定', label: '否定する', chapter: 28, chapterAnchor: 'ch-28' },
   { tag: '話法', label: '発話を埋め込む', chapter: 29, chapterAnchor: 'ch-29' },

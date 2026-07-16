@@ -1,0 +1,67 @@
+rewrite README.md (md=0 wiki=0 fm=0)
+rewrite background.md (md=0 wiki=0 fm=0)
+rewrite essences.md (md=0 wiki=0 fm=0)
+rewrite generation-prompt.md (md=0 wiki=0 fm=0)
+rewrite grading-prompt.md (md=0 wiki=0 fm=0)
+rewrite prompt-dumps/README.md (md=0 wiki=0 fm=0)
+rewrite prompt-dumps/check/step3.md (md=0 wiki=0 fm=0)
+rewrite prompt-dumps/check/step4.md (md=0 wiki=0 fm=0)
+rewrite prompt-dumps/check/step5.md (md=0 wiki=0 fm=0)
+rewrite prompt-dumps/check/step6.md (md=0 wiki=0 fm=0)
+rewrite prompt-dumps/check/step7.md (md=0 wiki=0 fm=0)
+rewrite prompt-dumps/generate/step3-declarative.md (md=0 wiki=0 fm=0)
+rewrite prompt-dumps/generate/step3-interrogative.md (md=0 wiki=0 fm=0)
+rewrite prompt-dumps/generate/step4-declarative.md (md=0 wiki=0 fm=0)
+rewrite prompt-dumps/generate/step4-interrogative.md (md=0 wiki=0 fm=0)
+rewrite prompt-dumps/generate/step5-declarative.md (md=0 wiki=0 fm=0)
+rewrite prompt-dumps/generate/step5-interrogative.md (md=0 wiki=0 fm=0)
+rewrite prompt-dumps/generate/step6-declarative.md (md=0 wiki=0 fm=0)
+rewrite prompt-dumps/generate/step7-declarative.md (md=0 wiki=0 fm=0)
+rewrite prompt-review-brief.md (md=0 wiki=0 fm=0)
+rewrite service-spec.md (md=0 wiki=0 fm=0)
+rewrite src/assets/textbook.md (md=0 wiki=0 fm=0)
+dry-run totals: {'markdown_link': 0, 'wikilink': 0, 'frontmatter': 0}; broken=0
+=== README.md ===
+changes: md_link=0 wikilink=0 frontmatter=0
+=== background.md ===
+changes: md_link=0 wikilink=0 frontmatter=0
+=== essences.md ===
+changes: md_link=0 wikilink=0 frontmatter=0
+=== generation-prompt.md ===
+changes: md_link=0 wikilink=0 frontmatter=0
+=== grading-prompt.md ===
+changes: md_link=0 wikilink=0 frontmatter=0
+=== prompt-dumps/README.md ===
+changes: md_link=0 wikilink=0 frontmatter=0
+=== prompt-dumps/check/step3.md ===
+changes: md_link=0 wikilink=0 frontmatter=0
+=== prompt-dumps/check/step4.md ===
+changes: md_link=0 wikilink=0 frontmatter=0
+=== prompt-dumps/check/step5.md ===
+changes: md_link=0 wikilink=0 frontmatter=0
+=== prompt-dumps/check/step6.md ===
+changes: md_link=0 wikilink=0 frontmatter=0
+=== prompt-dumps/check/step7.md ===
+changes: md_link=0 wikilink=0 frontmatter=0
+=== prompt-dumps/generate/step3-declarative.md ===
+changes: md_link=0 wikilink=0 frontmatter=0
+=== prompt-dumps/generate/step3-interrogative.md ===
+changes: md_link=0 wikilink=0 frontmatter=0
+=== prompt-dumps/generate/step4-declarative.md ===
+changes: md_link=0 wikilink=0 frontmatter=0
+=== prompt-dumps/generate/step4-interrogative.md ===
+changes: md_link=0 wikilink=0 frontmatter=0
+=== prompt-dumps/generate/step5-declarative.md ===
+changes: md_link=0 wikilink=0 frontmatter=0
+=== prompt-dumps/generate/step5-interrogative.md ===
+changes: md_link=0 wikilink=0 frontmatter=0
+=== prompt-dumps/generate/step6-declarative.md ===
+changes: md_link=0 wikilink=0 frontmatter=0
+=== prompt-dumps/generate/step7-declarative.md ===
+changes: md_link=0 wikilink=0 frontmatter=0
+=== prompt-review-brief.md ===
+changes: md_link=0 wikilink=0 frontmatter=0
+=== service-spec.md ===
+changes: md_link=0 wikilink=0 frontmatter=0
+=== src/assets/textbook.md ===
+changes: md_link=0 wikilink=0 frontmatter=0

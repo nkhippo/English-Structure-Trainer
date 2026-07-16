@@ -1,3 +1,10 @@
+---
+id: pj-2026-06-23-a9ff
+aliases:
+- pj-2026-06-23-a9ff
+title: Step 7 — declarative（問題生成）
+created: '2026-06-23'
+---
 # Step 7 — declarative（問題生成）
 
 - 仕様: work-request-mode-split 改修5（平叙/疑問モード分離・mixed廃止）

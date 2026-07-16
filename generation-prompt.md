@@ -1,3 +1,10 @@
+---
+id: pj-2026-06-21-f28b
+aliases:
+- pj-2026-06-21-f28b
+title: 問題生成プロンプト仕様
+created: '2026-06-21'
+---
 # 問題生成プロンプト仕様
 
 実装の正: `src/prompts/index.js`（`buildGeneratePrompt`）

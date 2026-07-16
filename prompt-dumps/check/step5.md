@@ -1,3 +1,10 @@
+---
+id: pj-2026-06-23-affa
+aliases:
+- pj-2026-06-23-affa
+title: Step 5 — 答え合わせ（採点）
+created: '2026-06-23'
+---
 # Step 5 — 答え合わせ（採点）
 
 - 生成元: `buildCheckPrompt()` in `src/prompts/index.js`

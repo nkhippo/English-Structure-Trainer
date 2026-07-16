@@ -1,0 +1,22 @@
+{"path": "README.md", "has_frontmatter": false, "existing_frontmatter": null, "body_start_line": 1, "first_h1": "英文構造トレーナー", "first_commit_date": "2026-06-09T22:35:47+08:00"}
+{"path": "background.md", "has_frontmatter": false, "existing_frontmatter": null, "body_start_line": 1, "first_h1": "プロジェクト背景（Cursor 用コンテキスト）", "first_commit_date": "2026-06-09T22:35:47+08:00"}
+{"path": "essences.md", "has_frontmatter": false, "existing_frontmatter": null, "body_start_line": 1, "first_h1": "エッセンス・誤りタクソノミー仕様", "first_commit_date": "2026-06-21T16:03:14+08:00"}
+{"path": "generation-prompt.md", "has_frontmatter": false, "existing_frontmatter": null, "body_start_line": 1, "first_h1": "問題生成プロンプト仕様", "first_commit_date": "2026-06-21T16:03:14+08:00"}
+{"path": "grading-prompt.md", "has_frontmatter": false, "existing_frontmatter": null, "body_start_line": 1, "first_h1": "答え合わせ（採点）プロンプト仕様", "first_commit_date": "2026-06-15T14:27:35+08:00"}
+{"path": "prompt-dumps/README.md", "has_frontmatter": false, "existing_frontmatter": null, "body_start_line": 1, "first_h1": "プロンプトダンプ — モード分離（改修5）", "first_commit_date": "2026-06-23T10:18:25+08:00"}
+{"path": "prompt-dumps/check/step3.md", "has_frontmatter": false, "existing_frontmatter": null, "body_start_line": 1, "first_h1": "Step 3 — 答え合わせ（採点）", "first_commit_date": "2026-06-23T19:10:58+08:00"}
+{"path": "prompt-dumps/check/step4.md", "has_frontmatter": false, "existing_frontmatter": null, "body_start_line": 1, "first_h1": "Step 4 — 答え合わせ（採点）", "first_commit_date": "2026-06-23T19:10:58+08:00"}
+{"path": "prompt-dumps/check/step5.md", "has_frontmatter": false, "existing_frontmatter": null, "body_start_line": 1, "first_h1": "Step 5 — 答え合わせ（採点）", "first_commit_date": "2026-06-23T19:10:58+08:00"}
+{"path": "prompt-dumps/check/step6.md", "has_frontmatter": false, "existing_frontmatter": null, "body_start_line": 1, "first_h1": "Step 6 — 答え合わせ（採点）", "first_commit_date": "2026-06-23T19:10:58+08:00"}
+{"path": "prompt-dumps/check/step7.md", "has_frontmatter": false, "existing_frontmatter": null, "body_start_line": 1, "first_h1": "Step 7 — 答え合わせ（採点）", "first_commit_date": "2026-06-23T19:10:58+08:00"}
+{"path": "prompt-dumps/generate/step3-declarative.md", "has_frontmatter": false, "existing_frontmatter": null, "body_start_line": 1, "first_h1": "Step 3 — declarative（問題生成）", "first_commit_date": "2026-06-23T10:18:25+08:00"}
+{"path": "prompt-dumps/generate/step3-interrogative.md", "has_frontmatter": false, "existing_frontmatter": null, "body_start_line": 1, "first_h1": "Step 3 — interrogative（問題生成）", "first_commit_date": "2026-06-23T10:18:25+08:00"}
+{"path": "prompt-dumps/generate/step4-declarative.md", "has_frontmatter": false, "existing_frontmatter": null, "body_start_line": 1, "first_h1": "Step 4 — declarative（問題生成）", "first_commit_date": "2026-06-23T10:18:25+08:00"}
+{"path": "prompt-dumps/generate/step4-interrogative.md", "has_frontmatter": false, "existing_frontmatter": null, "body_start_line": 1, "first_h1": "Step 4 — interrogative（問題生成）", "first_commit_date": "2026-06-23T10:18:25+08:00"}
+{"path": "prompt-dumps/generate/step5-declarative.md", "has_frontmatter": false, "existing_frontmatter": null, "body_start_line": 1, "first_h1": "Step 5 — declarative（問題生成）", "first_commit_date": "2026-06-23T10:18:25+08:00"}
+{"path": "prompt-dumps/generate/step5-interrogative.md", "has_frontmatter": false, "existing_frontmatter": null, "body_start_line": 1, "first_h1": "Step 5 — interrogative（問題生成）", "first_commit_date": "2026-06-23T10:18:25+08:00"}
+{"path": "prompt-dumps/generate/step6-declarative.md", "has_frontmatter": false, "existing_frontmatter": null, "body_start_line": 1, "first_h1": "Step 6 — declarative（問題生成）", "first_commit_date": "2026-06-23T10:18:25+08:00"}
+{"path": "prompt-dumps/generate/step7-declarative.md", "has_frontmatter": false, "existing_frontmatter": null, "body_start_line": 1, "first_h1": "Step 7 — declarative（問題生成）", "first_commit_date": "2026-06-23T10:18:25+08:00"}
+{"path": "prompt-review-brief.md", "has_frontmatter": false, "existing_frontmatter": null, "body_start_line": 1, "first_h1": "英文構造トレーナー — 疑問文出題の改善相談資料", "first_commit_date": "2026-06-22T23:56:34+08:00"}
+{"path": "service-spec.md", "has_frontmatter": false, "existing_frontmatter": null, "body_start_line": 1, "first_h1": "英文構造トレーナー — サービス仕様（STEP別）", "first_commit_date": "2026-06-21T16:03:14+08:00"}
+{"path": "src/assets/textbook.md", "has_frontmatter": false, "existing_frontmatter": null, "body_start_line": 1, "first_h1": "英文構造ガイドブック", "first_commit_date": "2026-06-09T23:37:57+08:00"}

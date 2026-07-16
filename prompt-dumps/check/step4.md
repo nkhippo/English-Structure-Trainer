@@ -1,3 +1,10 @@
+---
+id: pj-2026-06-23-9891
+aliases:
+- pj-2026-06-23-9891
+title: Step 4 — 答え合わせ（採点）
+created: '2026-06-23'
+---
 # Step 4 — 答え合わせ（採点）
 
 - 生成元: `buildCheckPrompt()` in `src/prompts/index.js`

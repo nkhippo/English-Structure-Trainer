@@ -1,3 +1,10 @@
+---
+id: pj-2026-06-23-c014
+aliases:
+- pj-2026-06-23-c014
+title: Step 3 — 答え合わせ（採点）
+created: '2026-06-23'
+---
 # Step 3 — 答え合わせ（採点）
 
 - 生成元: `buildCheckPrompt()` in `src/prompts/index.js`
